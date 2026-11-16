@@ -1,0 +1,285 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         String
+  phone        String?
+  active       Boolean    @default(true)
+  leads        Lead[]     @relation("AssignedLeads")
+  notes        LeadNote[]
+  createdAt    DateTime   @default(now())
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String
+  image       String?
+  sortOrder   Int       @default(0)
+  active      Boolean   @default(true)
+  products    Product[]
+}
+
+model Product {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  sku             String   @unique
+  categoryId      String
+  category        Category @relation(fields: [categoryId], references: [id])
+  description     String
+  specs           String   @default("[]")
+  unit            String
+  price           Float
+  promoPrice      Float?
+  moq             Int      @default(1)
+  stockStatus     String   @default("available")
+  stockQty        Int?
+  weightKg        Float    @default(1)
+  deliveryNotes   String?
+  tags            String   @default("")
+  images          String   @default("[]")
+  relatedSlugs    String   @default("")
+  warranty        String?
+  datasheetUrl    String?
+  installRequired Boolean  @default(false)
+  launchDate      String?
+  featured        Boolean  @default(false)
+  views           Int      @default(0)
+  enquiries       Int      @default(0)
+  seoTitle        String?
+  seoDescription  String?
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  leads           Lead[]
+  quotes          Quote[]
+}
+
+model Lead {
+  id            String     @id @default(cuid())
+  name          String
+  phone         String
+  whatsapp      String?
+  email         String?
+  location      String
+  company       String?
+  customerType  String     @default("retail")
+  registration  String?
+  monthlyVolume String?
+  creditRequest String?
+  productId     String?
+  product       Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName   String?
+  quantity      Float?
+  requirements  String?
+  requiredDate  String?
+  quoteValue    Float?
+  status        String     @default("new")
+  source        String     @default("website")
+  assignedToId  String?
+  assignedTo    User?      @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  followUpDate  String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  notes         LeadNote[]
+  quotes        Quote[]
+  orders        Order[]
+
+  @@index([status])
+  @@index([source])
+  @@index([phone])
+}
+
+model LeadNote {
+  id         String   @id @default(cuid())
+  leadId     String
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  authorId   String?
+  author     User?    @relation(fields: [authorId], references: [id])
+  authorName String
+  body       String
+  createdAt  DateTime @default(now())
+}
+
+model Quote {
+  id             String   @id @default(cuid())
+  number         String   @unique
+  publicToken    String   @unique
+  leadId         String?
+  lead           Lead?    @relation(fields: [leadId], references: [id])
+  customerName   String
+  phone          String
+  whatsapp       String?
+  email          String?
+  location       String
+  zoneName       String?
+  distanceKm     Float
+  distanceMethod String
+  productId      String?
+  product        Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName    String
+  sku            String?
+  quantity       Float
+  unit           String
+  unitPrice      Float
+  productTotal   Float
+  deliveryCost   Float
+  total          Float
+  validDays      Int      @default(7)
+  breakdown      String
+  disclaimer     String
+  createdAt      DateTime @default(now())
+  orders         Order[]
+}
+
+model Order {
+  id            String   @id @default(cuid())
+  number        String   @unique
+  quoteId       String?
+  quote         Quote?   @relation(fields: [quoteId], references: [id])
+  leadId        String?
+  lead          Lead?    @relation(fields: [leadId], references: [id])
+  customerName  String
+  phone         String
+  email         String?
+  location      String
+  items         String
+  total         Float
+  status        String   @default("requested")
+  paymentStatus String   @default("unpaid")
+  vehicle       String?
+  driver        String?
+  deliveryDate  String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Promotion {
+  id          String  @id @default(cuid())
+  title       String
+  slug        String  @unique
+  headline    String
+  description String
+  image       String?
+  priceLabel  String?
+  discount    String?
+  cta         String
+  ctaHref     String?
+  targetArea  String?
+  audience    String?
+  expiresAt   String?
+  active      Boolean @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  location    String
+  contractor  String?
+  products    String
+  quantity    String?
+  photos      String   @default("[]")
+  description String
+  status      String   @default("completed")
+  featured    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  excerpt   String
+  body      String
+  image     String?
+  kind      String   @default("news")
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Faq {
+  id        String  @id @default(cuid())
+  question  String
+  answer    String
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+}
+
+model Zone {
+  id         String  @id @default(cuid())
+  name       String
+  area       String
+  distanceKm Float
+  lat        Float
+  lng        Float
+  active     Boolean @default(true)
+}
+
+model Vehicle {
+  id         String  @id @default(cuid())
+  name       String
+  capacityKg Float
+  surcharge  Float
+  sortOrder  Int     @default(0)
+  active     Boolean @default(true)
+}
+
+model DeliverySettings {
+  id               String @id @default("default")
+  depotName        String
+  depotAddress     String
+  depotLat         Float
+  depotLng         Float
+  baseCharge       Float
+  perKm            Float
+  minCharge        Float
+  fuelSurchargePct Float
+  roadFactor       Float
+  extraCharge      Float
+}
+
+model SiteSetting {
+  id           String @id @default("default")
+  phone        String
+  whatsapp     String
+  email        String
+  address      String
+  hours        String
+  about        String
+  validityDays Int    @default(7)
+  disclaimer   String
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  href      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorEmail String?
+  action     String
+  entity     String
+  entityId   String?
+  detail     String?
+  createdAt  DateTime @default(now())
+}

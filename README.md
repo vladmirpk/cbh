@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Consolidated Bricks & Hardware
 
-## Getting Started
+A sales platform for CBH: catalogue, provisional quotations with delivery, lead desk, and a staff dashboard. The catalogue is category-led, so solar, lighting and later lines are new records rather than a new website.
 
-First, run the development server:
+## Run it locally
 
 ```bash
+npm install
+npx prisma generate
+npm run db:setup
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). The staff desk is [http://localhost:3000/admin](http://localhost:3000/admin).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Demo password for every seeded account: `Cbh-Yard-2026`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Email | Role |
+| --- | --- |
+| admin@cbh.co.zw | Super administrator |
+| management@cbh.co.zw | Management |
+| sales@cbh.co.zw | Salesperson |
+| marketing@cbh.co.zw | Marketing |
+| operations@cbh.co.zw | Operations |
 
-## Learn More
+Change those passwords, `AUTH_SECRET`, the WhatsApp number and the address in Settings before the site is public.
 
-To learn more about Next.js, take a look at the following resources:
+## What is included
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Public site: home, about, yard, categories, product pages, upcoming products, launch pages, promotions, projects, delivery, journal, contact, contractor enquiry
+- Provisional quote: suburb list, shared location, optional Google Map pin, live materials + delivery total, PDF, WhatsApp handoff, order request
+- Delivery rate card: zones, vehicles, base, per km, minimum, fuel, extras — edited in the desk
+- Leads from new → contacted → quoted → negotiating → won → lost, with source, notes, follow-up and salesperson
+- Orders from requested through delivered
+- CSV export of leads, quotes, products and orders
+- Roles, hashed passwords, audit log, in-app alerts, optional Resend email
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Customer logins, card payments, the solar configurator and a live WhatsApp Business API conversation are prepared for, and not switched on. Click-to-chat WhatsApp works now. Set `RESEND_API_KEY`, `NOTIFY_EMAIL` and `NOTIFY_FROM` for email alerts. Set `NEXT_PUBLIC_GA_ID` for Google Analytics and `NEXT_PUBLIC_GOOGLE_MAPS_KEY` for the pin map. Suburb quoting works without a maps key.
 
-## Deploy on Vercel
+## Stack and hosting
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Next.js, React, TypeScript, Tailwind, Prisma and SQLite. Passwords use bcrypt. Sessions are signed HTTP-only cookies.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+SQLite is the right start on one server. When several app instances need the same database, point Prisma at Postgres and change the datasource provider. Copy `prisma/dev.db` with `npm run backup` before that move.
+
+Host the Node server behind HTTPS (a small VPS is enough). Put the real domain in `NEXT_PUBLIC_SITE_URL`.
+
+## Third-party costs to budget separately
+
+These are provider prices, not a build fee. Confirm them when you open the accounts.
+
+- Google Maps JavaScript API: billed per map load. Low traffic is often inside Google’s monthly credit; a busy month is typically tens of US dollars.
+- WhatsApp click-to-chat: no Meta conversation fee. The WhatsApp Business API, if you later want messages sent from the server, is billed per conversation and needs a verified business account.
+- Email via Resend: a free tier covers early alert volume.
+- Hosting: a small VPS is usually in the range of a few dollars to a few tens of dollars a month, plus the domain.
+- Analytics: Google Analytics has no licence fee.
+
+## Security and ownership
+
+HTTPS belongs on the host. The app sets basic security headers, hashes passwords, keeps customer records off the public site, and writes an audit log for sign-ins and record changes. API keys stay in environment variables.
+
+CBH owns this source, the database, the content and any API accounts opened in CBH’s name. Export CSV from the desk at any time. Nothing here is a locked proprietary licence.
