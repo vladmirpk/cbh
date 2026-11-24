@@ -25,7 +25,16 @@ export default async function ContactPage() {
         </div>
       </div>
       <div className="panel p-5">
-        <SmartForm action={sendEnquiry} submit="Send to the sales desk">
+        <SmartForm
+          action={sendEnquiry}
+          submit="Send to the sales desk"
+          confirm={{
+            title: "Send this message?",
+            message: "Confirm you want CBH to receive your enquiry.",
+            confirmLabel: "Yes, send it",
+            cancelLabel: "Keep editing",
+          }}
+        >
           <input type="hidden" name="source" value="direct" />
           <label><span className="label">Name</span><input className="field" name="name" required /></label>
           <label><span className="label">Phone</span><input className="field" name="phone" required /></label>

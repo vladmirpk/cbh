@@ -45,7 +45,16 @@ export default async function UpcomingPage() {
           <p className="mt-2 text-stone">Name, phone, WhatsApp, email, location, product, estimated quantity and anything the site must allow for.</p>
         </div>
         <div className="panel p-5">
-          <SmartForm action={registerInterest} submit="Register interest">
+          <SmartForm
+            action={registerInterest}
+            submit="Register interest"
+            confirm={{
+              title: "Register your interest?",
+              message: "Confirm you want CBH to capture this as a demand lead before the product launches.",
+              confirmLabel: "Yes, register me",
+              cancelLabel: "Keep editing",
+            }}
+          >
             <input type="hidden" name="source" value="upcoming" />
             <label>
               <span className="label">Product</span>

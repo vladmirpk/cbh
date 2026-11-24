@@ -84,7 +84,17 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
         <h2 className="display text-3xl">Ask CBH to proceed</h2>
         <p className="mt-2 text-sm text-stone">This requests a formal order against the provisional figure. Payment is confirmed with your salesperson.</p>
         <div className="mt-4">
-          <SmartForm action={requestOrder} submit="Request this order">
+          <SmartForm
+            action={requestOrder}
+            submit="Request this order"
+            confirm={{
+              title: "Request this order?",
+              message: "Confirm you want CBH to proceed with a formal order against this provisional quotation.",
+              detail: quote.number,
+              confirmLabel: "Yes, request order",
+              cancelLabel: "Not yet",
+            }}
+          >
             <input type="hidden" name="token" value={quote.publicToken} />
           </SmartForm>
         </div>

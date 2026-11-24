@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useActionState } from "react";
 import { createQuote } from "@/lib/actions/public";
 import { calculateDelivery, type RateCard, type VehicleRate } from "@/lib/delivery";
 import { formatQty, money } from "@/lib/format";
 import { unitPrice } from "@/lib/types";
+import { ConfirmSheet, type ConfirmPayload } from "./ConfirmSheet";
 import { Cover } from "./Cover";
 import { ZonePicker, type LocationChoice, type ZoneOption } from "./ZonePicker";
 
@@ -62,6 +63,8 @@ export function QuoteWizard({
   );
   const [location, setLocation] = useState<LocationChoice | null>(null);
   const [source, setSource] = useState(initialSource || "website");
+  const [confirm, setConfirm] = useState<(ConfirmPayload & { kind: "add" | "remove" | "submit"; productId?: string }) | null>(null);
+  const skipConfirm = useRef(false);
   const [state, action, pending] = useActionState(createQuote, null);
   const selected = products.find((item) => item.id === selectedId) ?? null;
 
@@ -126,7 +129,23 @@ export function QuoteWizard({
 
   const draft = Number(draftQty);
 
-  function addSelected() {
+  function askAddSelected() {
+    if (!selected || !Number.isFinite(draft) || draft <= 0 || draft < selected.moq) return;
+    const updating = basket.some((line) => line.productId === selected.id);
+    setConfirm({
+      kind: "add",
+      title: updating ? "Update this product?" : "Add to your quote?",
+      message: updating
+        ? "Confirm you want to change the quantity for this product in your provisional quote."
+        : "Confirm you want to add this product to your quote basket.",
+      detail: `${selected.name} · ${formatQty(draft)} ${selected.unit}`,
+      image: selected.image || null,
+      confirmLabel: updating ? "Yes, update it" : "Yes, add it",
+      cancelLabel: "Not yet",
+    });
+  }
+
+  function applyAddSelected() {
     if (!selected || !Number.isFinite(draft) || draft <= 0 || draft < selected.moq) return;
     setBasket((current) => {
       const existing = current.find((line) => line.productId === selected.id);
@@ -137,6 +156,7 @@ export function QuoteWizard({
       }
       return [...current, { productId: selected.id, quantity: draft }];
     });
+    setConfirm(null);
   }
 
   function updateQty(productId: string, value: string) {
@@ -147,12 +167,30 @@ export function QuoteWizard({
     );
   }
 
-  function removeLine(productId: string) {
-    setBasket((current) => current.filter((line) => line.productId !== productId));
+  function askRemoveLine(productId: string) {
+    const line = lines.find((item) => item.productId === productId);
+    if (!line) return;
+    setConfirm({
+      kind: "remove",
+      productId,
+      title: "Remove from quote?",
+      message: "Confirm you want to take this product out of your quote basket.",
+      detail: line.productName,
+      image: line.image,
+      confirmLabel: "Yes, remove it",
+      cancelLabel: "Keep it",
+      tone: "danger",
+    });
+  }
+
+  function applyRemoveLine() {
+    if (!confirm?.productId) return;
+    setBasket((current) => current.filter((line) => line.productId !== confirm.productId));
+    setConfirm(null);
   }
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[1fr_340px]">
+    <div className="grid items-start gap-6 pb-24 md:pb-0 lg:grid-cols-[1fr_340px]">
       <div className="panel p-5 md:p-7">
         <ol className="mb-6 flex flex-wrap gap-4 text-xs uppercase tracking-[0.14em] text-stone">
           {["Products", "Location", "Your details"].map((label, index) => (
@@ -216,7 +254,7 @@ export function QuoteWizard({
                   type="button"
                   className="btn btn-primary w-full sm:w-auto"
                   disabled={!Number.isFinite(draft) || draft < selected.moq}
-                  onClick={addSelected}
+                  onClick={askAddSelected}
                 >
                   {basket.some((line) => line.productId === selected.id) ? "Update in quote" : "Add to quote"}
                 </button>
@@ -244,7 +282,7 @@ export function QuoteWizard({
                     />
                     <div className="col-span-2 flex items-center justify-between gap-3 sm:col-span-1 sm:justify-end">
                       <span className="text-sm font-semibold">{money(line.lineTotal)}</span>
-                      <button type="button" className="text-sm font-semibold text-brick" onClick={() => removeLine(line.productId)}>
+                      <button type="button" className="text-sm font-semibold text-brick" onClick={() => askRemoveLine(line.productId)}>
                         Remove
                       </button>
                     </div>
@@ -283,7 +321,26 @@ export function QuoteWizard({
         ) : null}
 
         {step === 3 && location && lines.length ? (
-          <form action={action} className="grid gap-4">
+          <form
+            id="cbh-quote-form"
+            action={action}
+            className="grid gap-4"
+            onSubmit={(event) => {
+              if (skipConfirm.current) {
+                skipConfirm.current = false;
+                return;
+              }
+              event.preventDefault();
+              setConfirm({
+                kind: "submit",
+                title: "Create this quote?",
+                message: "Confirm you want CBH to prepare this provisional quotation with materials and delivery.",
+                detail: `${lines.length} product${lines.length === 1 ? "" : "s"} · ${money(materialsTotal + (delivery?.deliveryCost || 0))} provisional`,
+                confirmLabel: "Yes, create quote",
+                cancelLabel: "Review again",
+              });
+            }}
+          >
             <input
               type="hidden"
               name="items"
@@ -326,6 +383,23 @@ export function QuoteWizard({
           </form>
         ) : null}
       </div>
+      <ConfirmSheet
+        open={Boolean(confirm)}
+        payload={confirm}
+        busy={pending}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => {
+          if (!confirm) return;
+          if (confirm.kind === "add") applyAddSelected();
+          else if (confirm.kind === "remove") applyRemoveLine();
+          else if (confirm.kind === "submit") {
+            const form = document.getElementById("cbh-quote-form") as HTMLFormElement | null;
+            setConfirm(null);
+            skipConfirm.current = true;
+            form?.requestSubmit();
+          }
+        }}
+      />
 
       <aside className="panel sticky top-24 p-5">
         <p className="text-[11px] uppercase tracking-[0.16em] text-stone">Live estimate</p>

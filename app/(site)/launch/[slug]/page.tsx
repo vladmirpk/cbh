@@ -64,7 +64,18 @@ export default async function LaunchPage({ params }: { params: Promise<{ slug: s
         <div className="panel p-5">
           <h2 className="display text-3xl">Register interest</h2>
           <div className="mt-4">
-            <SmartForm action={registerInterest} submit="Register interest">
+            <SmartForm
+              action={registerInterest}
+              submit="Register interest"
+              confirm={{
+                title: "Register your interest?",
+                message: "Confirm you want CBH to record your interest in this launch.",
+                detail: product.name,
+                image,
+                confirmLabel: "Yes, register me",
+                cancelLabel: "Keep editing",
+              }}
+            >
               <input type="hidden" name="productId" value={product.id} />
               <input type="hidden" name="source" value="launch" />
               <label><span className="label">Name</span><input className="field" name="name" required /></label>

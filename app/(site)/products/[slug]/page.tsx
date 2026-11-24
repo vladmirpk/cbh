@@ -96,7 +96,18 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <p className="mt-2 text-sm text-stone">This opens a lead for the sales team. For a priced delivery estimate, use the provisional quote.</p>
         </div>
         <div className="panel p-5">
-          <SmartForm action={sendEnquiry} submit="Send enquiry">
+          <SmartForm
+            action={sendEnquiry}
+            submit="Send enquiry"
+            confirm={{
+              title: "Send this enquiry?",
+              message: "Confirm you want CBH sales to receive this quote request.",
+              detail: product.name,
+              image: images[0],
+              confirmLabel: "Yes, send it",
+              cancelLabel: "Keep editing",
+            }}
+          >
             <input type="hidden" name="productId" value={product.id} />
             <input type="hidden" name="source" value="website" />
             <div className="grid gap-4 sm:grid-cols-2">
