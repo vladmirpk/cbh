@@ -76,7 +76,10 @@ export function ImageField({ initial }: { initial: string }) {
         <input className="field max-w-sm" value={link} onChange={(event) => setLink(event.target.value)} placeholder="Or paste an image link" />
         <button type="button" className="btn btn-ghost" onClick={addLink}>Add link</button>
       </div>
-      <p className="text-xs text-stone">JPG, PNG, or WebP, up to 4 MB. The first photo is the one shoppers see on the listing.</p>
+      <p className="text-xs text-stone">
+        Add a main photo plus optional extra angles. Shoppers can slide through all of them on the product page.
+        JPG, PNG, or WebP, up to 4 MB. The first photo is the listing thumbnail.
+      </p>
       {error ? <p className="text-sm font-medium text-[#b42318]">{error}</p> : null}
     </div>
   );

@@ -7,11 +7,11 @@ import { getCommerce } from "@/lib/queries";
 import { formatQty, money, waLink } from "@/lib/format";
 import { parseJson, type Spec, unitPrice } from "@/lib/types";
 import { StatusPill } from "@/components/ui";
-import { Cover } from "@/components/site/Cover";
 import { SmartForm } from "@/components/SmartForm";
 import { sendEnquiry } from "@/lib/actions/public";
 import { ProductCard } from "@/components/site/ProductCard";
 import { AddToCart } from "@/components/site/AddToCart";
+import { ProductGallery } from "@/components/site/ProductGallery";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -45,16 +45,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     <div className="wrap py-12">
       <p className="text-sm text-stone"><Link href="/products">Yard</Link> / <Link href={`/categories/${product.category.slug}`}>{product.category.name}</Link></p>
       <div className="mt-6 grid gap-8 lg:grid-cols-[1.1fr_.9fr]">
-        <div className="overflow-hidden rounded-[1.6rem] border border-line">
-          <div className="relative aspect-[4/3]"><Cover src={images[0]} alt={product.name} priority /></div>
-          {images.length > 1 ? (
-            <div className="grid grid-cols-4 gap-2 p-3">
-              {images.slice(1, 5).map((image) => (
-                <div key={image} className="aspect-square overflow-hidden rounded-xl"><Cover src={image} alt="" /></div>
-              ))}
-            </div>
-          ) : null}
-        </div>
+        <ProductGallery images={images} alt={product.name} />
         <div>
           <StatusPill status={product.stockStatus} />
           <h1 className="display mt-3 text-5xl leading-none">{product.name}</h1>

@@ -75,7 +75,10 @@ export function ProductForm({
         </div>
       </section>
       <section className="panel grid gap-4 p-5">
-        <h2 className="text-lg font-extrabold text-ink">Photos</h2>
+        <div>
+          <h2 className="text-lg font-extrabold text-ink">Photos</h2>
+          <p className="mt-1 text-sm text-stone">Main image is required for a strong listing. Extra photos are optional and appear in the product gallery slider.</p>
+        </div>
         <ImageField initial={images} />
       </section>
       <details className="panel p-5">
