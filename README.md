@@ -39,28 +39,24 @@ Customer logins, card payments, the solar configurator and a live WhatsApp Busin
 
 ## Stack and hosting
 
-Next.js, React, TypeScript, Tailwind, Prisma and SQLite. Passwords use bcrypt. Sessions are signed HTTP-only cookies.
+Next.js, React, TypeScript, Tailwind, Prisma and PostgreSQL. Passwords use bcrypt. Sessions are signed HTTP-only cookies.
 
-SQLite is the right start on one server. When several app instances need the same database, point Prisma at Postgres and change the datasource provider. Copy `prisma/dev.db` with `npm run backup` before that move.
-
-Host the Node server behind HTTPS (a small VPS is enough). Put the real domain in `NEXT_PUBLIC_SITE_URL`.
+Host the Node server behind HTTPS. Put the real domain in `NEXT_PUBLIC_SITE_URL`.
 
 ### Render environment variables
 
-Set these on the service (Environment):
+Paste into the web service Environment (use the **Internal** Database URL from your Render Postgres instance):
 
-| Key | Value |
-| --- | --- |
-| `DATABASE_URL` | `file:./dev.db` |
-| `AUTH_SECRET` | a long random string |
-| `NEXT_PUBLIC_SITE_URL` | your Render URL, e.g. `https://cbh.onrender.com` |
+```env
+DATABASE_URL=postgresql://USER:PASSWORD@INTERNAL_HOST/cbh
+AUTH_SECRET=replace-with-a-long-random-string
+NEXT_PUBLIC_SITE_URL=https://YOUR-SERVICE-NAME.onrender.com
+```
 
 Build command: `npm install && npm run build`  
-Start command: `npm start` (creates the SQLite file and seeds once if the database is empty)
+Start command: `npm start` (runs `db push` and seeds once if there are no users)
 
 Optional: `NEXT_PUBLIC_GA_ID`, `NEXT_PUBLIC_GOOGLE_MAPS_KEY`, `RESEND_API_KEY`, `NOTIFY_EMAIL`, `NOTIFY_FROM`.
-
-SQLite on Render’s free disk is wiped when the instance is replaced, so treat it as a trial host or attach a persistent disk / move to Postgres for real data.
 
 ## Third-party costs to budget separately
 
