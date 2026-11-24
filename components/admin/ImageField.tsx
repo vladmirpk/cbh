@@ -12,15 +12,20 @@ export function ImageField({ initial }: { initial: string }) {
   async function addFile(file: File) {
     setBusy(true);
     setError("");
-    const body = new FormData();
-    body.set("file", file);
-    const result = await uploadProductImage(body);
-    setBusy(false);
-    if (result.error || !result.url) {
-      setError(result.error || "The photo could not be saved.");
-      return;
+    try {
+      const body = new FormData();
+      body.set("file", file);
+      const result = await uploadProductImage(body);
+      if (result.error || !result.url) {
+        setError(result.error || "The photo could not be saved.");
+        return;
+      }
+      setUrls((list) => [...list, result.url!]);
+    } catch {
+      setError("Upload failed. Use a photo under 4 MB (JPG, PNG, or WebP).");
+    } finally {
+      setBusy(false);
     }
-    setUrls((list) => [...list, result.url!]);
   }
 
   function addLink() {
@@ -77,8 +82,8 @@ export function ImageField({ initial }: { initial: string }) {
         <button type="button" className="btn btn-ghost" onClick={addLink}>Add link</button>
       </div>
       <p className="text-xs text-stone">
-        Add a main photo plus optional extra angles. Shoppers can slide through all of them on the product page.
-        JPG, PNG, or WebP, up to 4 MB. The first photo is the listing thumbnail.
+        Add a main photo plus optional extra angles. Photos are stored with the catalogue so they survive redeploys.
+        JPG, PNG, or WebP, up to 4 MB.
       </p>
       {error ? <p className="text-sm font-medium text-[#b42318]">{error}</p> : null}
     </div>

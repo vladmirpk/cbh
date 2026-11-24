@@ -168,3 +168,118 @@ export async function buildQuotePdf(quote: PdfQuote, company: PdfCompany) {
   });
   return pdf.save();
 }
+
+export type PdfOrder = {
+  number: string;
+  createdAt: Date;
+  customerName: string;
+  phone: string;
+  email?: string | null;
+  location: string;
+  items: string;
+  total: number;
+  status: string;
+  paymentStatus: string;
+  vehicle?: string | null;
+  driver?: string | null;
+  deliveryDate?: string | null;
+  notes?: string | null;
+};
+
+export async function buildOrderPdf(order: PdfOrder, company: PdfCompany) {
+  const pdf = await PDFDocument.create();
+  const page = pdf.addPage([595.28, 841.89]);
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const strong = await pdf.embedFont(StandardFonts.HelveticaBold);
+  page.drawRectangle({ x: 0, y: 770, width: 595, height: 72, color: rgb(0.11, 0.09, 0.07) });
+  page.drawRectangle({ x: 0, y: 766, width: 595, height: 4, color: rgb(0.76, 0.25, 0.05) });
+  page.drawText("CONSOLIDATED BRICKS & HARDWARE", {
+    x: 48,
+    y: 808,
+    size: 11,
+    font: strong,
+    color: rgb(0.96, 0.93, 0.88),
+  });
+  page.drawText("DELIVERY / ORDER NOTE", {
+    x: 48,
+    y: 786,
+    size: 18,
+    font: strong,
+    color: rgb(1, 1, 1),
+  });
+
+  let y = 730;
+  page.drawText(order.number, { x: 48, y, size: 14, font: strong, color: rgb(0.11, 0.09, 0.07) });
+  page.drawText(formatDate(order.createdAt), { x: 420, y, size: 11, font, color: rgb(0.4, 0.36, 0.32) });
+  y -= 28;
+  page.drawText(order.customerName, { x: 48, y, size: 12, font: strong });
+  y -= 16;
+  page.drawText(`${order.phone}${order.email ? `  ·  ${order.email}` : ""}`, { x: 48, y, size: 10, font });
+  y -= 16;
+  for (const line of wrap(order.location, font, 10, 500)) {
+    page.drawText(line, { x: 48, y, size: 10, font });
+    y -= 14;
+  }
+  y -= 10;
+  drawRow(page, y, ["Status", `${order.status.replace(/_/g, " ")} · ${order.paymentStatus}`], true, font, strong);
+  y -= 18;
+  if (order.vehicle || order.driver) {
+    drawRow(page, y, ["Fleet", [order.vehicle, order.driver].filter(Boolean).join(" · ")], false, font, strong);
+    y -= 18;
+  }
+  if (order.deliveryDate) {
+    drawRow(page, y, ["Delivery date", order.deliveryDate], false, font, strong);
+    y -= 18;
+  }
+  y -= 8;
+  page.drawText("Items", { x: 48, y, size: 12, font: strong });
+  y -= 18;
+  const lines = parseOrderLines(order.items);
+  for (const line of lines) {
+    const label = `${line.product}${line.quantity ? ` · ${formatQty(line.quantity)}${line.unit ? ` ${line.unit}` : ""}` : ""}`;
+    drawRow(page, y, [label.slice(0, 58), line.total != null ? money(line.total) : ""], false, font, strong);
+    y -= 16;
+    if (y < 120) break;
+  }
+  y -= 8;
+  drawRow(page, y, ["Order total", money(order.total)], true, font, strong);
+  y -= 28;
+  if (order.notes) {
+    page.drawText("Notes", { x: 48, y, size: 11, font: strong });
+    y -= 16;
+    for (const line of wrap(order.notes, font, 10, 500)) {
+      page.drawText(line, { x: 48, y, size: 10, font, color: rgb(0.4, 0.36, 0.32) });
+      y -= 13;
+    }
+  }
+  page.drawText(`${company.address}  ·  ${company.phone}  ·  ${company.email}`, {
+    x: 48,
+    y: 42,
+    size: 9,
+    font,
+    color: rgb(0.4, 0.36, 0.32),
+  });
+  page.drawText(`WhatsApp ${company.whatsapp}`, {
+    x: 48,
+    y: 28,
+    size: 9,
+    font,
+    color: rgb(0.4, 0.36, 0.32),
+  });
+  return pdf.save();
+}
+
+function parseOrderLines(raw: string): Array<{ product: string; quantity?: number; unit?: string; total?: number }> {
+  try {
+    const parsed = JSON.parse(raw) as Array<Record<string, unknown>>;
+    if (!Array.isArray(parsed) || !parsed.length) return [{ product: "Materials" }];
+    return parsed.map((item) => ({
+      product: String(item.productName ?? item.product ?? "Item"),
+      quantity: typeof item.quantity === "number" ? item.quantity : undefined,
+      unit: typeof item.unit === "string" ? item.unit : undefined,
+      total: typeof item.lineTotal === "number" ? item.lineTotal : typeof item.total === "number" ? item.total : undefined,
+    }));
+  } catch {
+    return [{ product: raw || "Materials" }];
+  }
+}

@@ -142,22 +142,29 @@ export async function setListingVisible(formData: FormData) {
 }
 
 export async function uploadProductImage(formData: FormData): Promise<{ url?: string; error?: string }> {
-  const user = await requireUser();
-  if (!canManageProducts(user.role)) return { error: "Your role cannot add photos." };
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) return { error: "Choose a photo." };
-  if (file.size > 4 * 1024 * 1024) return { error: "Photos must be under 4 MB." };
-  const types: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
-  const ext = types[file.type];
-  if (!ext) return { error: "Use a JPG, PNG, or WebP photo." };
-  const { randomBytes } = await import("crypto");
-  const { mkdir, writeFile } = await import("fs/promises");
-  const path = await import("path");
-  const name = `${Date.now()}-${randomBytes(4).toString("hex")}.${ext}`;
-  const dir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, name), Buffer.from(await file.arrayBuffer()));
-  return { url: `/uploads/${name}` };
+  try {
+    const user = await requireUser();
+    if (!canManageProducts(user.role)) return { error: "Your role cannot add photos." };
+    const file = formData.get("file");
+    if (!(file instanceof File) || file.size === 0) return { error: "Choose a photo." };
+    if (file.size > 4 * 1024 * 1024) return { error: "Photos must be under 4 MB." };
+    const types: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+    const ext = types[file.type];
+    if (!ext) return { error: "Use a JPG, PNG, or WebP photo." };
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const media = await prisma.mediaFile.create({
+      data: {
+        filename: file.name || `photo.${ext}`,
+        mimeType: file.type,
+        bytes,
+        size: bytes.length,
+      },
+    });
+    await audit("upload", "media", media.id, media.filename, user.email);
+    return { url: `/api/media/${media.id}` };
+  } catch {
+    return { error: "The photo could not be saved. Try a smaller JPG, PNG, or WebP." };
+  }
 }
 
 export async function saveCategory(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -488,4 +495,267 @@ export async function markNotificationsRead() {
   await audit("read", "notification", undefined, undefined, user.email);
   revalidatePath("/admin");
   revalidatePath("/admin/notifications");
+}
+
+export async function updateLeadContact(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  if (!canManageLeads(user.role)) return { error: "Your role cannot update leads." };
+  const id = str(formData, "id");
+  const lead = await prisma.lead.findUnique({ where: { id } });
+  if (!lead) return { error: "Lead not found." };
+  if (!canSeeAllLeads(user.role) && lead.assignedToId && lead.assignedToId !== user.id) {
+    return { error: "This lead is assigned to someone else." };
+  }
+  const name = str(formData, "name");
+  const phone = str(formData, "phone");
+  if (name.length < 2 || phone.replace(/\D/g, "").length < 7) {
+    return { error: "Name and a usable phone number are required." };
+  }
+  await prisma.lead.update({
+    where: { id },
+    data: {
+      name,
+      phone,
+      whatsapp: str(formData, "whatsapp") || phone,
+      email: str(formData, "email") || null,
+      location: str(formData, "location") || lead.location,
+      company: str(formData, "company") || null,
+      customerType: str(formData, "customerType") === "contractor" ? "contractor" : "retail",
+      registration: str(formData, "registration") || null,
+      monthlyVolume: str(formData, "monthlyVolume") || null,
+      creditRequest: str(formData, "creditRequest") || null,
+      productName: str(formData, "productName") || lead.productName,
+      quantity: str(formData, "quantity") ? num(formData, "quantity") : lead.quantity,
+      requirements: str(formData, "requirements") || null,
+      requiredDate: str(formData, "requiredDate") || null,
+      source: str(formData, "source") || lead.source,
+    },
+  });
+  await audit("contact", "lead", id, name, user.email);
+  revalidatePath(`/admin/leads/${id}`);
+  revalidatePath("/admin/customers");
+  revalidatePath(`/admin/customers/${phone.replace(/\D/g, "") || id}`);
+  return { success: "Customer details saved." };
+}
+
+export async function updateQuote(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  if (!canManageLeads(user.role)) return { error: "Your role cannot edit quotations." };
+  const id = str(formData, "id");
+  const quote = await prisma.quote.findUnique({ where: { id } });
+  if (!quote) return { error: "Quotation not found." };
+  const customerName = str(formData, "customerName");
+  const phone = str(formData, "phone");
+  const location = str(formData, "location");
+  const productTotal = num(formData, "productTotal");
+  const deliveryCost = num(formData, "deliveryCost");
+  const validDays = Math.max(1, Math.round(num(formData, "validDays") || quote.validDays));
+  if (customerName.length < 2 || phone.replace(/\D/g, "").length < 7 || location.length < 2) {
+    return { error: "Customer name, phone and location are required." };
+  }
+  if (![productTotal, deliveryCost].every(Number.isFinite) || productTotal < 0 || deliveryCost < 0) {
+    return { error: "Materials and delivery amounts must be valid numbers." };
+  }
+  const total = Math.round((productTotal + deliveryCost) * 100) / 100;
+  await prisma.quote.update({
+    where: { id },
+    data: {
+      customerName,
+      phone,
+      whatsapp: str(formData, "whatsapp") || phone,
+      email: str(formData, "email") || null,
+      location,
+      zoneName: str(formData, "zoneName") || null,
+      productName: str(formData, "productName") || quote.productName,
+      quantity: str(formData, "quantity") ? num(formData, "quantity") : quote.quantity,
+      unit: str(formData, "unit") || quote.unit,
+      unitPrice: str(formData, "unitPrice") ? num(formData, "unitPrice") : quote.unitPrice,
+      productTotal,
+      deliveryCost,
+      total,
+      validDays,
+      disclaimer: str(formData, "disclaimer") || quote.disclaimer,
+      items: str(formData, "items") || quote.items,
+    },
+  });
+  if (quote.leadId) {
+    await prisma.lead.update({
+      where: { id: quote.leadId },
+      data: {
+        name: customerName,
+        phone,
+        whatsapp: str(formData, "whatsapp") || phone,
+        email: str(formData, "email") || null,
+        location,
+        quoteValue: total,
+      },
+    });
+  }
+  await audit("update", "quote", quote.number, moneyTotal(total), user.email);
+  revalidatePath(`/admin/quotes/${id}`);
+  revalidatePath("/admin/quotes");
+  return { success: "Quotation updated." };
+}
+
+export async function convertQuoteToOrder(formData: FormData) {
+  const user = await requireUser();
+  if (!canManageOrders(user.role)) return;
+  const id = str(formData, "id");
+  const quote = await prisma.quote.findUnique({ where: { id } });
+  if (!quote) return;
+  const existing = await prisma.order.findFirst({ where: { quoteId: quote.id } });
+  if (existing) {
+    redirect(`/admin/orders/${existing.id}`);
+  }
+  const count = await prisma.order.count();
+  const number = `ORD-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
+  const order = await prisma.order.create({
+    data: {
+      number,
+      quoteId: quote.id,
+      leadId: quote.leadId,
+      customerName: quote.customerName,
+      phone: quote.phone,
+      email: quote.email,
+      location: quote.location,
+      items: quote.items && quote.items !== "[]"
+        ? quote.items
+        : JSON.stringify([{ product: quote.productName, sku: quote.sku, quantity: quote.quantity, unit: quote.unit, total: quote.productTotal }]),
+      total: quote.total,
+      status: "confirmed",
+      paymentStatus: "unpaid",
+      notes: str(formData, "notes") || null,
+    },
+  });
+  if (quote.leadId) {
+    await prisma.lead.update({ where: { id: quote.leadId }, data: { status: "negotiating" } });
+  }
+  await audit("convert", "order", order.number, quote.number, user.email);
+  redirect(`/admin/orders/${order.id}`);
+}
+
+export async function updateOrderRecord(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  if (!canManageOrders(user.role)) return { error: "Your role cannot update orders." };
+  const id = str(formData, "id");
+  const status = str(formData, "status");
+  if (!ORDER_STATUSES.some((item) => item.id === status)) return { error: "Choose a status." };
+  const customerName = str(formData, "customerName");
+  const phone = str(formData, "phone");
+  const location = str(formData, "location");
+  const total = num(formData, "total");
+  if (customerName.length < 2 || phone.replace(/\D/g, "").length < 7 || location.length < 2) {
+    return { error: "Customer name, phone and location are required." };
+  }
+  if (!Number.isFinite(total) || total < 0) return { error: "Enter a valid order total." };
+  const order = await prisma.order.update({
+    where: { id },
+    data: {
+      status,
+      paymentStatus: str(formData, "paymentStatus") || "unpaid",
+      customerName,
+      phone,
+      email: str(formData, "email") || null,
+      location,
+      total,
+      vehicle: str(formData, "vehicle") || null,
+      driver: str(formData, "driver") || null,
+      deliveryDate: str(formData, "deliveryDate") || null,
+      notes: str(formData, "notes") || null,
+      items: str(formData, "items") || undefined,
+    },
+  });
+  if (order.leadId && ["confirmed", "loading", "dispatched", "in_transit", "delivered"].includes(status)) {
+    await prisma.lead.update({ where: { id: order.leadId }, data: { status: status === "delivered" ? "won" : "negotiating" } });
+  }
+  if (order.leadId && status === "cancelled") {
+    await prisma.lead.update({ where: { id: order.leadId }, data: { status: "lost" } });
+  }
+  await audit("update", "order", order.number, status, user.email);
+  revalidatePath(`/admin/orders/${id}`);
+  revalidatePath("/admin/orders");
+  return { success: "Order saved." };
+}
+
+export async function deleteCategory(formData: FormData) {
+  const user = await requireUser();
+  if (!canManageContent(user.role)) return;
+  const id = str(formData, "id");
+  const linked = await prisma.product.count({ where: { categoryId: id } });
+  if (linked > 0) {
+    await prisma.category.update({ where: { id }, data: { active: false } });
+    await audit("hide", "category", id, `${linked} products`, user.email);
+  } else {
+    await prisma.category.delete({ where: { id } });
+    await audit("delete", "category", id, undefined, user.email);
+  }
+  redirect("/admin/categories");
+}
+
+export async function deletePromotion(formData: FormData) {
+  const user = await requireUser();
+  if (!canManageContent(user.role)) return;
+  const id = str(formData, "id");
+  await prisma.promotion.delete({ where: { id } });
+  await audit("delete", "promotion", id, undefined, user.email);
+  redirect("/admin/promotions");
+}
+
+export async function deleteProject(formData: FormData) {
+  const user = await requireUser();
+  if (!canManageContent(user.role)) return;
+  const id = str(formData, "id");
+  await prisma.project.delete({ where: { id } });
+  await audit("delete", "project", id, undefined, user.email);
+  redirect("/admin/projects");
+}
+
+export async function deletePost(formData: FormData) {
+  const user = await requireUser();
+  if (!canManageContent(user.role)) return;
+  const id = str(formData, "id");
+  await prisma.post.delete({ where: { id } });
+  await audit("delete", "post", id, undefined, user.email);
+  redirect("/admin/posts");
+}
+
+export async function deleteFaq(formData: FormData) {
+  const user = await requireUser();
+  if (!canManageContent(user.role)) return;
+  const id = str(formData, "id");
+  await prisma.faq.delete({ where: { id } });
+  await audit("delete", "faq", id, undefined, user.email);
+  redirect("/admin/faqs");
+}
+
+export async function deleteZone(formData: FormData) {
+  const user = await requireUser();
+  if (!canManageDelivery(user.role)) return;
+  const id = str(formData, "id");
+  await prisma.zone.delete({ where: { id } });
+  await audit("delete", "zone", id, undefined, user.email);
+  redirect("/admin/delivery");
+}
+
+export async function deleteVehicle(formData: FormData) {
+  const user = await requireUser();
+  if (!canManageDelivery(user.role)) return;
+  const id = str(formData, "id");
+  await prisma.vehicle.delete({ where: { id } });
+  await audit("delete", "vehicle", id, undefined, user.email);
+  redirect("/admin/delivery");
+}
+
+export async function deactivateUser(formData: FormData) {
+  const actor = await requireUser();
+  if (!canManageTeam(actor.role)) return;
+  const id = str(formData, "id");
+  if (actor.id === id) return;
+  const person = await prisma.user.update({ where: { id }, data: { active: false } });
+  await audit("deactivate", "user", person.email, undefined, actor.email);
+  redirect("/admin/team");
+}
+
+function moneyTotal(value: number) {
+  return `US$${value.toFixed(2)}`;
 }

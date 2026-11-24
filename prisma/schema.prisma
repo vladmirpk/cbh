@@ -284,3 +284,12 @@ model AuditLog {
   detail     String?
   createdAt  DateTime @default(now())
 }
+
+model MediaFile {
+  id        String   @id @default(cuid())
+  filename  String
+  mimeType  String
+  bytes     Bytes
+  size      Int
+  createdAt DateTime @default(now())
+}

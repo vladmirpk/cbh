@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { canManageContent } from "@/lib/roles";
 import { Denied } from "@/components/ui";
 import { SmartForm } from "@/components/SmartForm";
-import { savePromotion } from "@/lib/actions/admin";
+import { deletePromotion, savePromotion } from "@/lib/actions/admin";
 
 export default async function PromotionsAdminPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   const user = await requireUser();
@@ -38,9 +39,24 @@ export default async function PromotionsAdminPage({ searchParams }: { searchPara
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="active" value="yes" defaultChecked={current?.active ?? true} /> Active</label>
           </SmartForm>
         </div>
+        {current ? (
+          <form action={deletePromotion} className="mt-4">
+            <input type="hidden" name="id" value={current.id} />
+            <button className="btn btn-ghost text-[#b42318]" type="submit">Delete promotion</button>
+          </form>
+        ) : null}
+        {current ? <p className="mt-3 text-sm"><Link href="/admin/promotions">New promotion</Link></p> : null}
       </div>
       <ul className="grid gap-2 text-sm">
-        {items.map((item) => <li key={item.id} className="panel p-3"><a href={`/admin/promotions?id=${item.id}`} className="font-semibold">{item.title}</a><p className="text-stone">{item.active ? "Live" : "Hidden"} · {item.cta}</p></li>)}
+        {items.map((item) => (
+          <li key={item.id} className="panel flex items-center justify-between gap-3 p-3">
+            <div>
+              <Link href={`/admin/promotions?id=${item.id}`} className="font-semibold">{item.title}</Link>
+              <p className="text-stone">{item.active ? "Live" : "Hidden"} · {item.cta}</p>
+            </div>
+            <Link href={`/admin/promotions?id=${item.id}`} className="text-xs">Edit</Link>
+          </li>
+        ))}
       </ul>
     </div>
   );
