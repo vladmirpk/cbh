@@ -45,6 +45,23 @@ SQLite is the right start on one server. When several app instances need the sam
 
 Host the Node server behind HTTPS (a small VPS is enough). Put the real domain in `NEXT_PUBLIC_SITE_URL`.
 
+### Render environment variables
+
+Set these on the service (Environment):
+
+| Key | Value |
+| --- | --- |
+| `DATABASE_URL` | `file:./dev.db` |
+| `AUTH_SECRET` | a long random string |
+| `NEXT_PUBLIC_SITE_URL` | your Render URL, e.g. `https://cbh.onrender.com` |
+
+Build command: `npm install && npm run build`  
+Start command: `npm start` (creates the SQLite file and seeds once if the database is empty)
+
+Optional: `NEXT_PUBLIC_GA_ID`, `NEXT_PUBLIC_GOOGLE_MAPS_KEY`, `RESEND_API_KEY`, `NOTIFY_EMAIL`, `NOTIFY_FROM`.
+
+SQLite on Render’s free disk is wiped when the instance is replaced, so treat it as a trial host or attach a persistent disk / move to Postgres for real data.
+
 ## Third-party costs to budget separately
 
 These are provider prices, not a build fee. Confirm them when you open the accounts.
