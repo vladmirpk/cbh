@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { getCommerce, ratesFrom } from "@/lib/queries";
+import { parseJson } from "@/lib/types";
 import { QuoteWizard } from "@/components/site/QuoteWizard";
 
 export const metadata: Metadata = {
@@ -39,6 +40,7 @@ export default async function QuotePage({
             weightKg: product.weightKg,
             stockStatus: product.stockStatus,
             category: product.category.name,
+            image: parseJson<string[]>(product.images, [])[0] || null,
           }))}
           zones={zones}
           vehicles={vehicles.map((vehicle) => ({ name: vehicle.name, capacityKg: vehicle.capacityKg, surcharge: vehicle.surcharge }))}

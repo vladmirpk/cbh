@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { canSeeFinance } from "@/lib/roles";
 import { money } from "@/lib/format";
-import { LEAD_SOURCES } from "@/lib/types";
+import { LEAD_SOURCES, parseJson } from "@/lib/types";
+import { Cover } from "@/components/site/Cover";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -76,12 +77,20 @@ export default async function DashboardPage() {
         <section className="panel p-5">
           <h2 className="display text-2xl">Most viewed</h2>
           <ul className="mt-3 text-sm">
-            {products.map((product) => (
-              <li key={product.id} className="flex justify-between border-b border-line py-2">
-                <span>{product.name}</span>
-                <span className="text-stone">{product.views} views · {product.enquiries} {product.enquiries === 1 ? "enquiry" : "enquiries"}</span>
-              </li>
-            ))}
+            {products.map((product) => {
+              const image = parseJson<string[]>(product.images, [])[0];
+              return (
+                <li key={product.id} className="flex items-center justify-between gap-3 border-b border-line py-2">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-[#e8eef8]">
+                      <Cover src={image} alt="" />
+                    </span>
+                    <span className="truncate">{product.name}</span>
+                  </span>
+                  <span className="shrink-0 text-stone">{product.views} views · {product.enquiries} {product.enquiries === 1 ? "enquiry" : "enquiries"}</span>
+                </li>
+              );
+            })}
           </ul>
         </section>
         <section className="panel p-5">

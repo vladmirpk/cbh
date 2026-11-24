@@ -71,7 +71,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           {product.warranty ? <p className="mt-2 text-sm">Warranty: {product.warranty}</p> : null}
           <div className="mt-6 flex flex-wrap gap-2">
             <Link href={`/quote?product=${product.slug}`} className="btn btn-primary">Provisional quote</Link>
-            <AddToCart slug={product.slug} name={product.name} />
+            <AddToCart slug={product.slug} name={product.name} image={images[0]} />
             <a href={wa} className="btn btn-ink" target="_blank" rel="noreferrer">Ask on WhatsApp</a>
             {launchable ? <Link href={`/launch/${product.slug}`} className="btn btn-ghost">Launch page</Link> : null}
           </div>

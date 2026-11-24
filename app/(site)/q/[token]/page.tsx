@@ -7,6 +7,7 @@ import { parseJson, quoteLinesFrom } from "@/lib/types";
 import type { DeliveryBreakdown } from "@/lib/delivery";
 import { getCommerce } from "@/lib/queries";
 import { SmartForm } from "@/components/SmartForm";
+import { Cover } from "@/components/site/Cover";
 import { requestOrder } from "@/lib/actions/public";
 
 export const metadata: Metadata = { title: "Your provisional quotation" };
@@ -18,6 +19,13 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
   const { site } = await getCommerce();
   const breakdown = parseJson<DeliveryBreakdown | null>(quote.breakdown, null);
   const lines = quoteLinesFrom(quote);
+  const catalog = await prisma.product.findMany({
+    where: { id: { in: lines.map((line) => line.productId).filter(Boolean) } },
+    select: { id: true, images: true },
+  });
+  const imageById = new Map(
+    catalog.map((product) => [product.id, parseJson<string[]>(product.images, [])[0] || null]),
+  );
   const summary = lines
     .map((line) => `${formatQty(line.quantity)} ${line.unit} ${line.productName}`)
     .join(", ");
@@ -40,11 +48,18 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
             {lines.map((line) => (
               <tr key={`${line.productId}-${line.sku}`} className="border-t border-line">
                 <td className="py-3">
-                  {line.productName}
-                  <br />
-                  <span className="text-stone">{formatQty(line.quantity)} {line.unit} @ {money(line.unitPrice)}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#e8eef8]">
+                      <Cover src={imageById.get(line.productId)} alt={line.productName} />
+                    </div>
+                    <span>
+                      {line.productName}
+                      <br />
+                      <span className="text-stone">{formatQty(line.quantity)} {line.unit} @ {money(line.unitPrice)}</span>
+                    </span>
+                  </div>
                 </td>
-                <td className="py-3 text-right">{money(line.lineTotal)}</td>
+                <td className="py-3 text-right align-middle">{money(line.lineTotal)}</td>
               </tr>
             ))}
             <tr className="border-t border-line">

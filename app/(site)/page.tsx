@@ -1,18 +1,10 @@
 import Link from "next/link";
-import { BadgeCheck, Handshake, Headset, Truck } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Hero } from "@/components/site/Hero";
 import { Departments } from "@/components/site/Departments";
 import { ProductCard } from "@/components/site/ProductCard";
 import { Cover } from "@/components/site/Cover";
 import { parseJson } from "@/lib/types";
-
-const points = [
-  { icon: BadgeCheck, title: "Quality Products", text: "You Can Trust" },
-  { icon: Truck, title: "Reliable Delivery", text: "Across Zimbabwe" },
-  { icon: Handshake, title: "Competitive Prices", text: "Always" },
-  { icon: Headset, title: "Expert Support", text: "When You Need It" },
-];
 
 export default async function HomePage() {
   const [categories, featured, promotions, upcoming] = await Promise.all([
@@ -36,18 +28,6 @@ export default async function HomePage() {
     <div className="bg-plaster pb-12">
       <Hero />
       <Departments categories={categories.map((category) => ({ name: category.name, slug: category.slug }))} />
-
-      <section className="wrap mt-8 grid gap-4 border-y border-line bg-white py-5 sm:grid-cols-2 lg:grid-cols-4">
-        {points.map((point) => (
-          <div key={point.title} className="flex items-center gap-3 px-2">
-            <point.icon className="text-ink" size={28} />
-            <p className="text-sm font-bold leading-tight text-ink">
-              {point.title}
-              <span className="block font-semibold text-stone">{point.text}</span>
-            </p>
-          </div>
-        ))}
-      </section>
 
       {featured.length ? (
         <section className="wrap mt-12">

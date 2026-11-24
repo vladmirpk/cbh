@@ -6,6 +6,7 @@ import { createQuote } from "@/lib/actions/public";
 import { calculateDelivery, type RateCard, type VehicleRate } from "@/lib/delivery";
 import { formatQty, money } from "@/lib/format";
 import { unitPrice } from "@/lib/types";
+import { Cover } from "./Cover";
 import { ZonePicker, type LocationChoice, type ZoneOption } from "./ZonePicker";
 
 type WizardProduct = {
@@ -20,6 +21,7 @@ type WizardProduct = {
   weightKg: number;
   stockStatus: string;
   category: string;
+  image?: string | null;
 };
 
 type BasketLine = {
@@ -91,6 +93,7 @@ export function QuoteWizard({
           lineTotal: Math.round(price * quantity * 100) / 100,
           weightKg: Math.round(product.weightKg * quantity * 100) / 100,
           moq: product.moq,
+          image: product.image || null,
         };
       })
       .filter(Boolean) as Array<{
@@ -103,6 +106,7 @@ export function QuoteWizard({
       lineTotal: number;
       weightKg: number;
       moq: number;
+      image: string | null;
     }>;
   }, [basket, products]);
 
@@ -175,19 +179,27 @@ export function QuoteWizard({
                       const existing = basket.find((line) => line.productId === item.id);
                       setDraftQty(String(existing?.quantity ?? defaultQty(item)));
                     }}
-                    className={`rounded-2xl border px-4 py-3 text-left ${item.id === selectedId ? "border-brick bg-white" : "border-line"}`}
+                    className={`grid grid-cols-[64px_1fr] items-center gap-3 rounded-2xl border px-3 py-3 text-left ${item.id === selectedId ? "border-brick bg-white" : "border-line"}`}
                   >
-                    <span className="flex items-start justify-between gap-2">
-                      <span className="block font-semibold text-ink">{item.name}</span>
-                      {inBasket ? <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-[#157347]">In quote</span> : null}
+                    <div className="aspect-square overflow-hidden rounded-xl bg-[#e8eef8]">
+                      <Cover src={item.image} alt="" />
+                    </div>
+                    <span>
+                      <span className="flex items-start justify-between gap-2">
+                        <span className="block font-semibold text-ink">{item.name}</span>
+                        {inBasket ? <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-[#157347]">In quote</span> : null}
+                      </span>
+                      <span className="text-sm text-stone">{item.category} · {money(unitPrice(item))} / {item.unit} · min {item.moq}</span>
                     </span>
-                    <span className="text-sm text-stone">{item.category} · {money(unitPrice(item))} / {item.unit} · min {item.moq}</span>
                   </button>
                 );
               })}
             </div>
             {selected ? (
-              <div className="grid gap-3 rounded-2xl border border-line bg-plaster p-4 sm:grid-cols-[1fr_auto]">
+              <div className="grid gap-3 rounded-2xl border border-line bg-plaster p-4 sm:grid-cols-[72px_1fr_auto] sm:items-end">
+                <div className="aspect-square overflow-hidden rounded-xl bg-[#e8eef8]">
+                  <Cover src={selected.image} alt={selected.name} />
+                </div>
                 <label>
                   <span className="label">Quantity ({selected.unit})</span>
                   <input
@@ -200,16 +212,14 @@ export function QuoteWizard({
                     <p className="mt-1 text-sm text-brick">Minimum order is {selected.moq} {selected.unit}.</p>
                   ) : null}
                 </label>
-                <div className="flex items-end">
-                  <button
-                    type="button"
-                    className="btn btn-primary w-full sm:w-auto"
-                    disabled={!Number.isFinite(draft) || draft < selected.moq}
-                    onClick={addSelected}
-                  >
-                    {basket.some((line) => line.productId === selected.id) ? "Update in quote" : "Add to quote"}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className="btn btn-primary w-full sm:w-auto"
+                  disabled={!Number.isFinite(draft) || draft < selected.moq}
+                  onClick={addSelected}
+                >
+                  {basket.some((line) => line.productId === selected.id) ? "Update in quote" : "Add to quote"}
+                </button>
               </div>
             ) : null}
 
@@ -217,19 +227,22 @@ export function QuoteWizard({
               <div className="grid gap-2">
                 <p className="label">Your quote basket</p>
                 {lines.map((line) => (
-                  <div key={line.productId} className="grid gap-2 rounded-2xl border border-line bg-white p-3 sm:grid-cols-[1fr_120px_auto] sm:items-center">
+                  <div key={line.productId} className="grid grid-cols-[64px_1fr] gap-3 rounded-2xl border border-line bg-white p-3 sm:grid-cols-[72px_1fr_120px_auto] sm:items-center">
+                    <div className="aspect-square overflow-hidden rounded-xl bg-[#e8eef8]">
+                      <Cover src={line.image} alt={line.productName} />
+                    </div>
                     <div>
                       <p className="font-semibold text-ink">{line.productName}</p>
                       <p className="text-sm text-stone">{line.sku} · {money(line.unitPrice)} / {line.unit}</p>
                     </div>
                     <input
-                      className="field"
+                      className="field col-span-2 sm:col-span-1"
                       inputMode="decimal"
                       value={String(line.quantity)}
                       onChange={(event) => updateQty(line.productId, event.target.value)}
                       aria-label={`Quantity for ${line.productName}`}
                     />
-                    <div className="flex items-center justify-between gap-3 sm:justify-end">
+                    <div className="col-span-2 flex items-center justify-between gap-3 sm:col-span-1 sm:justify-end">
                       <span className="text-sm font-semibold">{money(line.lineTotal)}</span>
                       <button type="button" className="text-sm font-semibold text-brick" onClick={() => removeLine(line.productId)}>
                         Remove
@@ -322,7 +335,10 @@ export function QuoteWizard({
         {lines.length ? (
           <ul className="mt-4 max-h-56 space-y-2 overflow-auto text-sm">
             {lines.map((line) => (
-              <li key={line.productId} className="flex justify-between gap-3 border-b border-line pb-2">
+              <li key={line.productId} className="grid grid-cols-[44px_1fr_auto] items-center gap-2 border-b border-line pb-2">
+                <div className="aspect-square overflow-hidden rounded-lg bg-[#e8eef8]">
+                  <Cover src={line.image} alt="" />
+                </div>
                 <span>
                   <span className="font-semibold text-ink">{line.productName}</span>
                   <span className="block text-stone">{formatQty(line.quantity)} {line.unit}</span>

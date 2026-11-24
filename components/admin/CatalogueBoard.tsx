@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { money } from "@/lib/format";
 import { labelOf, PRODUCT_STATUSES } from "@/lib/types";
 import { deleteProduct, setListingVisible, updateListingPrice } from "@/lib/actions/admin";
+import { Cover } from "@/components/site/Cover";
 
 export type ListingRow = {
   id: string;
@@ -58,10 +59,7 @@ export function CatalogueBoard({ products }: { products: ListingRow[] }) {
         {visible.map((product) => (
           <article key={product.id} className="grid gap-4 rounded-2xl border border-line bg-white p-3 shadow-[0_10px_30px_rgba(12,60,140,0.05)] md:grid-cols-[96px_1fr_280px] md:items-center">
             <div className="h-24 overflow-hidden rounded-xl bg-[#e8eef8]">
-              {product.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={product.image} alt="" className="h-full w-full object-cover" />
-              ) : null}
+              <Cover src={product.image} alt={product.name} />
             </div>
             <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-stone">{product.category} · {product.sku}</p>
