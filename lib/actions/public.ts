@@ -8,7 +8,7 @@ import { calculateDelivery, haversineKm, nearestZone, roadKm, round2 } from "../
 import { ratesFrom } from "../queries";
 import { notify, audit } from "../notify";
 import { rateLimit } from "../rate-limit";
-import { money } from "../format";
+import { formatQty, money } from "../format";
 import { LEAD_SOURCES, type FormState, num, str, unitPrice } from "../types";
 
 async function guard(bucket: string) {
@@ -29,8 +29,6 @@ export async function createQuote(_prev: FormState, formData: FormData): Promise
   const blocked = await guard("quote");
   if (blocked) return { error: blocked };
 
-  const productId = str(formData, "productId");
-  const quantity = num(formData, "quantity");
   const name = str(formData, "name");
   const phone = str(formData, "phone");
   const whatsapp = str(formData, "whatsapp") || phone;
@@ -48,18 +46,60 @@ export async function createQuote(_prev: FormState, formData: FormData): Promise
 
   if (name.length < 2) return { error: "Enter the name CBH should ask for." };
   if (phone.replace(/\D/g, "").length < 7) return { error: "Enter a phone number we can call." };
-  if (!Number.isFinite(quantity) || quantity <= 0) return { error: "Enter a quantity." };
 
-  const [product, settings, site, vehicles, zones] = await Promise.all([
-    prisma.product.findFirst({ where: { id: productId, active: true }, include: { category: true } }),
+  type IncomingLine = { productId: string; quantity: number };
+  let requested: IncomingLine[] = [];
+  const rawItems = str(formData, "items");
+  if (rawItems) {
+    try {
+      const parsed = JSON.parse(rawItems) as Array<{ productId?: string; quantity?: number }>;
+      requested = parsed
+        .map((line) => ({ productId: String(line.productId || ""), quantity: Number(line.quantity) }))
+        .filter((line) => line.productId && Number.isFinite(line.quantity) && line.quantity > 0);
+    } catch {
+      return { error: "The quote basket could not be read. Add the products again." };
+    }
+  } else {
+    const productId = str(formData, "productId");
+    const quantity = num(formData, "quantity");
+    if (productId && Number.isFinite(quantity) && quantity > 0) {
+      requested = [{ productId, quantity }];
+    }
+  }
+  if (!requested.length) return { error: "Add at least one product to the quote." };
+
+  const [catalog, settings, site, vehicles, zones] = await Promise.all([
+    prisma.product.findMany({
+      where: { id: { in: requested.map((line) => line.productId) }, active: true },
+    }),
     prisma.deliverySettings.findUnique({ where: { id: "default" } }),
     prisma.siteSetting.findUnique({ where: { id: "default" } }),
     prisma.vehicle.findMany({ where: { active: true } }),
     prisma.zone.findMany({ where: { active: true } }),
   ]);
-  if (!product || !settings || !site) return { error: "That product is not available for quotation." };
-  if (product.stockStatus === "discontinued") return { error: "This product has been discontinued." };
-  if (quantity < product.moq) return { error: `Minimum order is ${product.moq} ${product.unit}.` };
+  if (!settings || !site) return { error: "Quotation settings are not ready yet." };
+
+  const byId = new Map(catalog.map((product) => [product.id, product]));
+  const lines = [];
+  for (const request of requested) {
+    const product = byId.get(request.productId);
+    if (!product) return { error: "One of the products is no longer available." };
+    if (product.stockStatus === "discontinued") return { error: `${product.name} has been discontinued.` };
+    if (request.quantity < product.moq) {
+      return { error: `Minimum order for ${product.name} is ${product.moq} ${product.unit}.` };
+    }
+    const price = unitPrice(product);
+    lines.push({
+      productId: product.id,
+      productName: product.name,
+      sku: product.sku,
+      quantity: request.quantity,
+      unit: product.unit,
+      unitPrice: price,
+      lineTotal: round2(price * request.quantity),
+      weightKg: round2(product.weightKg * request.quantity),
+    });
+  }
 
   const zone = zones.find((item) => item.id === zoneId);
   let distanceKm = zone?.distanceKm ?? 0;
@@ -78,20 +118,25 @@ export async function createQuote(_prev: FormState, formData: FormData): Promise
   if (!zone && distanceMethod !== "pin") return { error: "Choose a suburb or drop a pin so delivery can be estimated." };
   if (distanceKm <= 0) return { error: "Choose a delivery location." };
 
+  const productTotal = round2(lines.reduce((sum, line) => sum + line.lineTotal, 0));
+  const weightKg = round2(lines.reduce((sum, line) => sum + line.weightKg, 0));
   const breakdown = calculateDelivery({
-    quantity,
-    weightKgEach: product.weightKg,
+    weightKg,
     distanceKm,
     rates: ratesFrom(settings),
     vehicles,
   });
-  const price = unitPrice(product);
-  const productTotal = round2(price * quantity);
   const total = round2(productTotal + breakdown.deliveryCost);
   const location = [address, zoneName].filter(Boolean).join(", ") || zoneName;
   const count = await prisma.quote.count();
   const number = `CBH-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
   const publicToken = randomBytes(9).toString("hex");
+  const primary = lines[0];
+  const summaryName =
+    lines.length === 1
+      ? primary.productName
+      : `${primary.productName} + ${lines.length - 1} more`;
+  const summaryQty = lines.reduce((sum, line) => sum + line.quantity, 0);
 
   const lead = await prisma.lead.create({
     data: {
@@ -102,10 +147,15 @@ export async function createQuote(_prev: FormState, formData: FormData): Promise
       location,
       company: company || null,
       customerType,
-      productId: product.id,
-      productName: product.name,
-      quantity,
-      requirements: requirements || null,
+      productId: primary.productId,
+      productName: summaryName,
+      quantity: summaryQty,
+      requirements: [
+        requirements,
+        lines.map((line) => `${formatQty(line.quantity)} ${line.unit} ${line.productName}`).join("; "),
+      ]
+        .filter(Boolean)
+        .join("\n"),
       requiredDate: requiredDate || null,
       quoteValue: total,
       status: "quoted",
@@ -125,27 +175,32 @@ export async function createQuote(_prev: FormState, formData: FormData): Promise
       zoneName,
       distanceKm: breakdown.distanceKm,
       distanceMethod,
-      productId: product.id,
-      productName: product.name,
-      sku: product.sku,
-      quantity,
-      unit: product.unit,
-      unitPrice: price,
+      productId: primary.productId,
+      productName: summaryName,
+      sku: primary.sku,
+      quantity: summaryQty,
+      unit: lines.length === 1 ? primary.unit : "items",
+      unitPrice: lines.length === 1 ? primary.unitPrice : productTotal,
       productTotal,
       deliveryCost: breakdown.deliveryCost,
       total,
+      items: JSON.stringify(lines),
       validDays: site.validityDays,
       breakdown: JSON.stringify(breakdown),
       disclaimer: site.disclaimer,
     },
   });
-  await prisma.product.update({ where: { id: product.id }, data: { enquiries: { increment: 1 } } });
+  await Promise.all(
+    lines.map((line) =>
+      prisma.product.update({ where: { id: line.productId }, data: { enquiries: { increment: 1 } } }),
+    ),
+  );
   await notify(
     `Quote ${number}`,
-    `${name} requested ${quantity} ${product.unit} of ${product.name} to ${location}. Provisional total ${money(total)}.`,
+    `${name} requested ${lines.length} product${lines.length === 1 ? "" : "s"} to ${location}. Provisional total ${money(total)}.`,
     `/admin/leads/${lead.id}`,
   );
-  await audit("create", "quote", number, `${name} · ${product.name}`, name);
+  await audit("create", "quote", number, `${name} · ${summaryName}`, name);
   redirect(`/q/${publicToken}`);
 }
 
@@ -260,15 +315,17 @@ export async function requestOrder(_prev: FormState, formData: FormData): Promis
       phone: quote.phone,
       email: quote.email,
       location: quote.location,
-      items: JSON.stringify([
-        {
-          product: quote.productName,
-          sku: quote.sku,
-          quantity: quote.quantity,
-          unit: quote.unit,
-          total: quote.total,
-        },
-      ]),
+      items: quote.items && quote.items !== "[]"
+        ? quote.items
+        : JSON.stringify([
+            {
+              product: quote.productName,
+              sku: quote.sku,
+              quantity: quote.quantity,
+              unit: quote.unit,
+              total: quote.productTotal,
+            },
+          ]),
       total: quote.total,
       vehicle: JSON.parse(quote.breakdown).vehicle,
       status: "requested",

@@ -54,6 +54,43 @@ export type FormState = { error?: string; success?: string } | null;
 
 export type Spec = { label: string; value: string };
 
+export type QuoteLine = {
+  productId: string;
+  productName: string;
+  sku: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  lineTotal: number;
+  weightKg: number;
+};
+
+export function quoteLinesFrom(quote: {
+  items?: string | null;
+  productId?: string | null;
+  productName: string;
+  sku?: string | null;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  productTotal: number;
+}): QuoteLine[] {
+  const parsed = parseJson<QuoteLine[]>(quote.items, []);
+  if (parsed.length) return parsed;
+  return [
+    {
+      productId: quote.productId || "",
+      productName: quote.productName,
+      sku: quote.sku || "",
+      quantity: quote.quantity,
+      unit: quote.unit,
+      unitPrice: quote.unitPrice,
+      lineTotal: quote.productTotal,
+      weightKg: 0,
+    },
+  ];
+}
+
 export function labelOf(list: readonly { id: string; label: string }[], id: string) {
   return list.find((item) => item.id === id)?.label ?? id;
 }

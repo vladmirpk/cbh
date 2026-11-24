@@ -137,6 +137,7 @@ model Quote {
   productTotal   Float
   deliveryCost   Float
   total          Float
+  items          String   @default("[]")
   validDays      Int      @default(7)
   breakdown      String
   disclaimer     String

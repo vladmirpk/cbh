@@ -23,8 +23,8 @@ export default async function QuotePage({
   return (
     <div className="wrap py-12">
       <p className="text-xs uppercase tracking-[0.18em] text-stone">Quotation</p>
-      <h1 className="display mt-2 max-w-3xl text-5xl leading-none">Tell us the load and the gate. We’ll price both.</h1>
-      <p className="mt-4 max-w-2xl text-stone">The figure includes materials and a delivery estimate from the CBH dispatch point. It is provisional until the yard confirms vehicle, road and stock.</p>
+      <h1 className="display mt-2 max-w-3xl text-5xl leading-none">Build a full load quote in one go.</h1>
+      <p className="mt-4 max-w-2xl text-stone">Add as many products as you need — bricks, cement, pavers, solar — then choose the delivery suburb. The figure includes materials and an indicative delivery cost for the combined load.</p>
       <div className="mt-8">
         <QuoteWizard
           products={products.map((product) => ({

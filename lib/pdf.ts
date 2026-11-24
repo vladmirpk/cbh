@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { formatDate, addDays, money, formatQty } from "./format";
 import type { DeliveryBreakdown } from "./delivery";
+import { quoteLinesFrom, type QuoteLine } from "./types";
 
 export type PdfQuote = {
   number: string;
@@ -20,6 +21,7 @@ export type PdfQuote = {
   productTotal: number;
   deliveryCost: number;
   total: number;
+  items?: string | null;
   breakdown: DeliveryBreakdown;
   disclaimer: string;
 };
@@ -104,20 +106,26 @@ export async function buildQuotePdf(quote: PdfQuote, company: PdfCompany) {
   page.drawText("Description", { x: 56, y: y, size: 10, font: strong, color: rgb(0.35, 0.3, 0.26) });
   page.drawText("Amount", { x: 480, y: y, size: 10, font: strong, color: rgb(0.35, 0.3, 0.26) });
   y -= 32;
-  const productLine = `${quote.productName}${quote.sku ? ` (${quote.sku})` : ""} · ${formatQty(quote.quantity)} ${quote.unit} @ ${money(quote.unitPrice)}`;
-  for (const line of wrap(productLine, font, 11, 360)) {
-    page.drawText(line, { x: 48, y, size: 11, font, color: rgb(0.11, 0.09, 0.07) });
-    y -= 16;
+  const lines: QuoteLine[] = quoteLinesFrom(quote);
+  for (const item of lines) {
+    const productLine = `${item.productName}${item.sku ? ` (${item.sku})` : ""} · ${formatQty(item.quantity)} ${item.unit} @ ${money(item.unitPrice)}`;
+    const wrapped = wrap(productLine, font, 11, 360);
+    const startY = y;
+    for (const line of wrapped) {
+      page.drawText(line, { x: 48, y, size: 11, font, color: rgb(0.11, 0.09, 0.07) });
+      y -= 16;
+    }
+    const productAmount = money(item.lineTotal);
+    page.drawText(productAmount, {
+      x: 547 - strong.widthOfTextAtSize(productAmount, 11),
+      y: startY,
+      size: 11,
+      font: strong,
+      color: rgb(0.11, 0.09, 0.07),
+    });
+    y -= 6;
   }
-  const productAmount = money(quote.productTotal);
-  page.drawText(productAmount, {
-    x: 547 - strong.widthOfTextAtSize(productAmount, 11),
-    y: y + 16,
-    size: 11,
-    font: strong,
-    color: rgb(0.11, 0.09, 0.07),
-  });
-  y -= 8;
+  y -= 2;
   drawRow(page, y, ["Estimated delivery", money(quote.deliveryCost)], false, font, strong);
   y -= 16;
   page.drawText(

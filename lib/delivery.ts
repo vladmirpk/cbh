@@ -58,14 +58,19 @@ export function nearestZone<T extends { lat: number; lng: number }>(
 }
 
 export function calculateDelivery(input: {
-  quantity: number;
-  weightKgEach: number;
+  quantity?: number;
+  weightKgEach?: number;
+  weightKg?: number;
   distanceKm: number;
   rates: RateCard;
   vehicles: VehicleRate[];
 }): DeliveryBreakdown {
-  const quantity = Math.max(0, input.quantity);
-  const weightKg = round2(quantity * Math.max(input.weightKgEach, 0.1));
+  const quantity = Math.max(0, input.quantity ?? 1);
+  const weightKg = round2(
+    input.weightKg != null
+      ? Math.max(input.weightKg, 0.1)
+      : quantity * Math.max(input.weightKgEach ?? 0.1, 0.1),
+  );
   const distanceKm = round2(Math.max(input.distanceKm, 0));
   const vehicles = [...input.vehicles].sort((a, b) => a.capacityKg - b.capacityKg);
   let vehicle = vehicles.find((item) => item.capacityKg >= weightKg);

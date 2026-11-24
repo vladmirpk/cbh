@@ -22,6 +22,15 @@ type WizardProduct = {
   category: string;
 };
 
+type BasketLine = {
+  productId: string;
+  quantity: number;
+};
+
+function defaultQty(product: WizardProduct) {
+  return Math.max(product.moq, product.unit === "brick" ? 1000 : product.moq);
+}
+
 export function QuoteWizard({
   products,
   zones,
@@ -41,15 +50,18 @@ export function QuoteWizard({
   initialSlug?: string;
   initialSource?: string;
 }) {
-  const initial = products.find((item) => item.slug === initialSlug) ?? products[0];
+  const initial = products.find((item) => item.slug === initialSlug) ?? null;
   const [step, setStep] = useState(1);
   const [query, setQuery] = useState("");
-  const [productId, setProductId] = useState(initial?.id ?? "");
-  const [quantity, setQuantity] = useState(initial ? String(Math.max(initial.moq, initial.unit === "brick" ? 1000 : initial.moq)) : "1");
+  const [selectedId, setSelectedId] = useState(initial?.id ?? products[0]?.id ?? "");
+  const [draftQty, setDraftQty] = useState(initial ? String(defaultQty(initial)) : "1");
+  const [basket, setBasket] = useState<BasketLine[]>(() =>
+    initial ? [{ productId: initial.id, quantity: defaultQty(initial) }] : [],
+  );
   const [location, setLocation] = useState<LocationChoice | null>(null);
   const [source, setSource] = useState(initialSource || "website");
   const [state, action, pending] = useActionState(createQuote, null);
-  const product = products.find((item) => item.id === productId) ?? null;
+  const selected = products.find((item) => item.id === selectedId) ?? null;
 
   useEffect(() => {
     if (initialSource) return;
@@ -61,60 +73,192 @@ export function QuoteWizard({
     const hay = `${item.name} ${item.sku} ${item.category}`.toLowerCase();
     return hay.includes(query.toLowerCase());
   });
-  const qty = Number(quantity);
-  const price = product ? unitPrice(product) : 0;
-  const productTotal = product && Number.isFinite(qty) ? Math.round(price * qty * 100) / 100 : 0;
+
+  const lines = useMemo(() => {
+    return basket
+      .map((line) => {
+        const product = products.find((item) => item.id === line.productId);
+        if (!product) return null;
+        const price = unitPrice(product);
+        const quantity = line.quantity;
+        return {
+          productId: product.id,
+          productName: product.name,
+          sku: product.sku,
+          quantity,
+          unit: product.unit,
+          unitPrice: price,
+          lineTotal: Math.round(price * quantity * 100) / 100,
+          weightKg: Math.round(product.weightKg * quantity * 100) / 100,
+          moq: product.moq,
+        };
+      })
+      .filter(Boolean) as Array<{
+      productId: string;
+      productName: string;
+      sku: string;
+      quantity: number;
+      unit: string;
+      unitPrice: number;
+      lineTotal: number;
+      weightKg: number;
+      moq: number;
+    }>;
+  }, [basket, products]);
+
+  const materialsTotal = lines.reduce((sum, line) => sum + line.lineTotal, 0);
+  const totalWeight = lines.reduce((sum, line) => sum + line.weightKg, 0);
+  const moqError = lines.find((line) => line.quantity < line.moq);
+
   const delivery = useMemo(() => {
-    if (!product || !location || !Number.isFinite(qty) || qty <= 0) return null;
+    if (!location || !lines.length) return null;
     return calculateDelivery({
-      quantity: qty,
-      weightKgEach: product.weightKg,
+      weightKg: totalWeight,
       distanceKm: location.distanceKm,
       rates,
       vehicles,
     });
-  }, [product, location, qty, rates, vehicles]);
+  }, [location, lines.length, totalWeight, rates, vehicles]);
+
+  const draft = Number(draftQty);
+
+  function addSelected() {
+    if (!selected || !Number.isFinite(draft) || draft <= 0 || draft < selected.moq) return;
+    setBasket((current) => {
+      const existing = current.find((line) => line.productId === selected.id);
+      if (existing) {
+        return current.map((line) =>
+          line.productId === selected.id ? { ...line, quantity: draft } : line,
+        );
+      }
+      return [...current, { productId: selected.id, quantity: draft }];
+    });
+  }
+
+  function updateQty(productId: string, value: string) {
+    const quantity = Number(value);
+    if (!Number.isFinite(quantity) || quantity <= 0) return;
+    setBasket((current) =>
+      current.map((line) => (line.productId === productId ? { ...line, quantity } : line)),
+    );
+  }
+
+  function removeLine(productId: string) {
+    setBasket((current) => current.filter((line) => line.productId !== productId));
+  }
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[1fr_320px]">
+    <div className="grid items-start gap-6 lg:grid-cols-[1fr_340px]">
       <div className="panel p-5 md:p-7">
-        <ol className="mb-6 flex gap-4 text-xs uppercase tracking-[0.14em] text-stone">
-          {["Product", "Location", "Your details"].map((label, index) => (
+        <ol className="mb-6 flex flex-wrap gap-4 text-xs uppercase tracking-[0.14em] text-stone">
+          {["Products", "Location", "Your details"].map((label, index) => (
             <li key={label} className={step === index + 1 ? "text-brick" : ""}>{index + 1}. {label}</li>
           ))}
         </ol>
-        {step === 1 && product ? (
+
+        {step === 1 ? (
           <div className="grid gap-4">
+            <p className="text-sm text-stone">Add every product for this site — bricks, cement, pavers, solar — then continue once the basket looks right.</p>
             <label>
               <span className="label">Search products</span>
               <input className="field" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Bricks, pavers, solar…" />
             </label>
-            <div className="grid max-h-80 gap-2 overflow-auto">
-              {filtered.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setProductId(item.id);
-                    setQuantity(String(Math.max(item.moq, item.unit === "brick" ? 1000 : item.moq)));
-                  }}
-                  className={`rounded-2xl border px-4 py-3 text-left ${item.id === productId ? "border-brick bg-white" : "border-line"}`}
-                >
-                  <span className="block font-semibold">{item.name}</span>
-                  <span className="text-sm text-stone">{item.category} · {money(unitPrice(item))} / {item.unit} · min {item.moq}</span>
-                </button>
-              ))}
+            <div className="grid max-h-64 gap-2 overflow-auto">
+              {filtered.map((item) => {
+                const inBasket = basket.some((line) => line.productId === item.id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedId(item.id);
+                      const existing = basket.find((line) => line.productId === item.id);
+                      setDraftQty(String(existing?.quantity ?? defaultQty(item)));
+                    }}
+                    className={`rounded-2xl border px-4 py-3 text-left ${item.id === selectedId ? "border-brick bg-white" : "border-line"}`}
+                  >
+                    <span className="flex items-start justify-between gap-2">
+                      <span className="block font-semibold text-ink">{item.name}</span>
+                      {inBasket ? <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-[#157347]">In quote</span> : null}
+                    </span>
+                    <span className="text-sm text-stone">{item.category} · {money(unitPrice(item))} / {item.unit} · min {item.moq}</span>
+                  </button>
+                );
+              })}
             </div>
-            <label>
-              <span className="label">Quantity ({product.unit})</span>
-              <input className="field" inputMode="decimal" value={quantity} onChange={(event) => setQuantity(event.target.value)} />
-            </label>
-            {qty < product.moq ? <p className="text-sm text-brick">Minimum order is {product.moq} {product.unit}.</p> : null}
-            <button className="btn btn-ink" type="button" disabled={!product || qty < product.moq} onClick={() => setStep(2)}>
+            {selected ? (
+              <div className="grid gap-3 rounded-2xl border border-line bg-plaster p-4 sm:grid-cols-[1fr_auto]">
+                <label>
+                  <span className="label">Quantity ({selected.unit})</span>
+                  <input
+                    className="field"
+                    inputMode="decimal"
+                    value={draftQty}
+                    onChange={(event) => setDraftQty(event.target.value)}
+                  />
+                  {Number.isFinite(draft) && draft < selected.moq ? (
+                    <p className="mt-1 text-sm text-brick">Minimum order is {selected.moq} {selected.unit}.</p>
+                  ) : null}
+                </label>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    className="btn btn-primary w-full sm:w-auto"
+                    disabled={!Number.isFinite(draft) || draft < selected.moq}
+                    onClick={addSelected}
+                  >
+                    {basket.some((line) => line.productId === selected.id) ? "Update in quote" : "Add to quote"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {lines.length ? (
+              <div className="grid gap-2">
+                <p className="label">Your quote basket</p>
+                {lines.map((line) => (
+                  <div key={line.productId} className="grid gap-2 rounded-2xl border border-line bg-white p-3 sm:grid-cols-[1fr_120px_auto] sm:items-center">
+                    <div>
+                      <p className="font-semibold text-ink">{line.productName}</p>
+                      <p className="text-sm text-stone">{line.sku} · {money(line.unitPrice)} / {line.unit}</p>
+                    </div>
+                    <input
+                      className="field"
+                      inputMode="decimal"
+                      value={String(line.quantity)}
+                      onChange={(event) => updateQty(line.productId, event.target.value)}
+                      aria-label={`Quantity for ${line.productName}`}
+                    />
+                    <div className="flex items-center justify-between gap-3 sm:justify-end">
+                      <span className="text-sm font-semibold">{money(line.lineTotal)}</span>
+                      <button type="button" className="text-sm font-semibold text-brick" onClick={() => removeLine(line.productId)}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-stone">No products in the quote yet. Pick one above and add it.</p>
+            )}
+
+            {moqError ? (
+              <p className="text-sm text-brick">
+                {moqError.productName} needs at least {moqError.moq} {moqError.unit}.
+              </p>
+            ) : null}
+
+            <button
+              className="btn btn-ink"
+              type="button"
+              disabled={!lines.length || Boolean(moqError)}
+              onClick={() => setStep(2)}
+            >
               Continue to location
             </button>
           </div>
         ) : null}
+
         {step === 2 ? (
           <div className="grid gap-4">
             <ZonePicker zones={zones} depot={depot} roadFactor={rates.roadFactor} mapsKey={mapsKey} value={location} onChange={setLocation} />
@@ -124,10 +268,25 @@ export function QuoteWizard({
             </div>
           </div>
         ) : null}
-        {step === 3 && product && location ? (
+
+        {step === 3 && location && lines.length ? (
           <form action={action} className="grid gap-4">
-            <input type="hidden" name="productId" value={product.id} />
-            <input type="hidden" name="quantity" value={quantity} />
+            <input
+              type="hidden"
+              name="items"
+              value={JSON.stringify(
+                lines.map((line) => ({
+                  productId: line.productId,
+                  productName: line.productName,
+                  sku: line.sku,
+                  quantity: line.quantity,
+                  unit: line.unit,
+                  unitPrice: line.unitPrice,
+                  lineTotal: line.lineTotal,
+                  weightKg: line.weightKg,
+                })),
+              )}
+            />
             <input type="hidden" name="zoneId" value={location.zoneId} />
             <input type="hidden" name="method" value={location.method} />
             <input type="hidden" name="lat" value={location.lat} />
@@ -154,24 +313,41 @@ export function QuoteWizard({
           </form>
         ) : null}
       </div>
+
       <aside className="panel sticky top-24 p-5">
         <p className="text-[11px] uppercase tracking-[0.16em] text-stone">Live estimate</p>
-        {product ? (
-          <>
-            <h2 className="display mt-2 text-3xl leading-none">{product.name}</h2>
-            <p className="mt-2 text-sm text-stone">{product.sku} · {formatQty(Number.isFinite(qty) ? qty : 0)} {product.unit}</p>
-            <dl className="mt-5 grid gap-2 text-sm">
-              <div className="flex justify-between"><dt>Materials</dt><dd>{money(productTotal)}</dd></div>
-              <div className="flex justify-between"><dt>Estimated delivery</dt><dd>{delivery ? money(delivery.deliveryCost) : "—"}</dd></div>
-              <div className="flex justify-between border-t border-line pt-2 text-base font-semibold">
-                <dt>Provisional total</dt>
-                <dd>{delivery ? money(productTotal + delivery.deliveryCost) : "—"}</dd>
-              </div>
-            </dl>
-            {delivery ? <p className="mt-3 text-xs text-stone">{delivery.vehicle} · {delivery.trips} trip{delivery.trips === 1 ? "" : "s"} · {delivery.distanceKm} km</p> : <p className="mt-3 text-xs text-stone">Choose a location to price delivery.</p>}
-            <p className="mt-4 text-xs leading-relaxed text-copper">This is a provisional quotation. Final delivery charges are confirmed by CBH.</p>
-          </>
-        ) : <p>Add a product to the catalogue to start quoting.</p>}
+        <h2 className="display mt-2 text-3xl leading-none">
+          {lines.length ? `${lines.length} product${lines.length === 1 ? "" : "s"}` : "Empty quote"}
+        </h2>
+        {lines.length ? (
+          <ul className="mt-4 max-h-56 space-y-2 overflow-auto text-sm">
+            {lines.map((line) => (
+              <li key={line.productId} className="flex justify-between gap-3 border-b border-line pb-2">
+                <span>
+                  <span className="font-semibold text-ink">{line.productName}</span>
+                  <span className="block text-stone">{formatQty(line.quantity)} {line.unit}</span>
+                </span>
+                <span className="shrink-0 font-semibold">{money(line.lineTotal)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-stone">Add products to build a multi-item provisional quote.</p>
+        )}
+        <dl className="mt-5 grid gap-2 text-sm">
+          <div className="flex justify-between"><dt>Materials</dt><dd>{money(materialsTotal)}</dd></div>
+          <div className="flex justify-between"><dt>Estimated delivery</dt><dd>{delivery ? money(delivery.deliveryCost) : "—"}</dd></div>
+          <div className="flex justify-between border-t border-line pt-2 text-base font-semibold">
+            <dt>Provisional total</dt>
+            <dd>{delivery ? money(materialsTotal + delivery.deliveryCost) : "—"}</dd>
+          </div>
+        </dl>
+        {delivery ? (
+          <p className="mt-3 text-xs text-stone">{delivery.vehicle} · {delivery.trips} trip{delivery.trips === 1 ? "" : "s"} · {delivery.distanceKm} km · {formatQty(delivery.weightKg)} kg</p>
+        ) : (
+          <p className="mt-3 text-xs text-stone">Choose a location to price delivery for the full load.</p>
+        )}
+        <p className="mt-4 text-xs leading-relaxed text-copper">This is a provisional quotation. Final delivery charges are confirmed by CBH.</p>
       </aside>
     </div>
   );
