@@ -126,7 +126,9 @@ export default async function HomePage() {
 
       <section className="wrap mt-12 grid gap-4 lg:grid-cols-[0.9fr_1.35fr_0.9fr]">
         <article className="relative min-h-72 overflow-hidden rounded-2xl bg-ink text-white">
-          <img src="https://images.unsplash.com/photo-1517581177682-a085bb7ffb15?auto=format&fit=crop&w=800&q=70" alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover opacity-50" />
+          <div className="absolute inset-0 opacity-50">
+            <Cover src="https://images.unsplash.com/photo-1517581177682-a085bb7ffb15?auto=format&fit=crop&w=800&q=70" alt="" />
+          </div>
           <div className="absolute inset-0 bg-gradient-to-r from-[#08275f] via-[#08275fcc] to-transparent" />
           <div className="relative flex h-full flex-col justify-end p-7">
             <h2 className="text-4xl font-extrabold leading-none">Strong<br />Foundations<br /><span className="text-gold">Last Longer</span></h2>

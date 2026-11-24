@@ -42,7 +42,7 @@ export function CatalogueBoard({ products }: { products: ListingRow[] }) {
           <p className="mt-2 max-w-xl text-sm text-stone">Add a listing, change its price, swap the photos, or take it off the site. Shoppers see the change on the next page load.</p>
         </div>
         <div className="flex gap-3 text-sm">
-          <a href="/api/export/products" className="btn btn-ghost">Download CSV</a>
+          <Link href="/api/export/products" className="btn btn-ghost">Download CSV</Link>
           <Link href="/admin/products/new" className="btn btn-primary">Add listing</Link>
         </div>
       </div>

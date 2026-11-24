@@ -11,7 +11,7 @@ export default async function QuotesPage() {
   const quotes = await prisma.quote.findMany({ orderBy: { createdAt: "desc" }, include: { lead: true } });
   return (
     <div>
-      <div className="flex items-center justify-between"><h1 className="display text-4xl">Quotations</h1><a href="/api/export/quotes" className="text-sm">Download CSV</a></div>
+      <div className="flex items-center justify-between"><h1 className="display text-4xl">Quotations</h1><Link href="/api/export/quotes" className="text-sm">Download CSV</Link></div>
       <div className="mt-6 overflow-x-auto">
         <table className="w-full min-w-[720px] text-sm">
           <thead className="text-left text-stone"><tr><th className="py-2">Quote</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead>

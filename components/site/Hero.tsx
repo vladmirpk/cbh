@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Cover } from "./Cover";
 
 const slides = [
   {
@@ -37,7 +38,9 @@ export function Hero() {
   const slide = slides[index];
   return (
     <section className="relative overflow-hidden bg-[#08275f] text-white">
-      <img src={slide.image} alt="" decoding="async" fetchPriority="high" className="absolute inset-0 h-full w-full object-cover" />
+      <div className="absolute inset-0">
+        <Cover src={slide.image} alt="" priority />
+      </div>
       <div className="absolute inset-0 bg-[linear-gradient(90deg,#082a78_0%,#0a3f9ee6_34%,#0a3f9e66_58%,transparent_78%)]" />
       <div className="wrap relative flex min-h-[460px] items-center py-16 md:min-h-[520px]">
         <div className="max-w-xl">

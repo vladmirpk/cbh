@@ -20,7 +20,7 @@ export default async function LeadsPage() {
           <h1 className="display text-4xl">Leads</h1>
           <p className="mt-2 text-sm text-stone">Drag a card to move it. {followUps.length} still have a follow-up date.</p>
         </div>
-        <a href="/api/export/leads" className="text-sm">Download CSV</a>
+        <Link href="/api/export/leads" className="text-sm">Download CSV</Link>
       </div>
       <div className="mt-6">
         <LeadBoard

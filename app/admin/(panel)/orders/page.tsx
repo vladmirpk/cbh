@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { canManageOrders } from "@/lib/roles";
@@ -13,7 +14,7 @@ export default async function OrdersPage() {
   const orders = await prisma.order.findMany({ orderBy: { createdAt: "desc" } });
   return (
     <div>
-      <div className="flex items-center justify-between"><h1 className="display text-4xl">Orders</h1><a className="text-sm" href="/api/export/orders">Download CSV</a></div>
+      <div className="flex items-center justify-between"><h1 className="display text-4xl">Orders</h1><Link className="text-sm" href="/api/export/orders">Download CSV</Link></div>
       <p className="mt-2 text-sm text-stone">Requested → confirmed → loading → dispatched → in transit → delivered. Online payment stays unpaid until a gateway is connected.</p>
       <div className="mt-6 grid gap-4">
         {orders.map((order) => (
