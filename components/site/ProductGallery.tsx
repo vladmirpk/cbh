@@ -6,13 +6,14 @@ import { Cover } from "./Cover";
 
 export function ProductGallery({ images, alt }: { images: string[]; alt: string }) {
   const photos = images.length ? images : [null];
+  const photoKey = images.join("|");
   const [index, setIndex] = useState(0);
   const touchStart = useRef<number | null>(null);
   const current = photos[index] ?? null;
 
   useEffect(() => {
     setIndex(0);
-  }, [images.join("|")]);
+  }, [photoKey]);
 
   function go(delta: number) {
     setIndex((value) => (value + delta + photos.length) % photos.length);
