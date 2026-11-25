@@ -12,10 +12,20 @@ export default async function SettingsPage() {
   const placeholder = site.whatsapp.includes("000000");
   return (
     <div className="max-w-2xl">
-      <h1 className="display text-4xl">Company settings</h1>
+      <h1 className="display text-4xl text-ink">Company settings</h1>
+      <p className="mt-2 text-sm text-stone">Saving asks for confirmation — these details show across the public site and quotes.</p>
       {placeholder ? <p className="mt-3 rounded-2xl bg-[#f3e2c4] px-4 py-3 text-sm text-copper">The WhatsApp number is still a placeholder. Update it before sharing the site.</p> : null}
       <div className="mt-6">
-        <SmartForm action={saveSettings} submit="Save settings">
+        <SmartForm
+          action={saveSettings}
+          submit="Save settings"
+          confirm={{
+            title: "Save company settings?",
+            message: "Phone, WhatsApp, address, disclaimer, and payment details update site-wide.",
+            confirmLabel: "Save settings",
+            cancelLabel: "Keep editing",
+          }}
+        >
           <label><span className="label">Phone</span><input className="field" name="phone" defaultValue={site.phone} /></label>
           <label><span className="label">WhatsApp</span><input className="field" name="whatsapp" defaultValue={site.whatsapp} /></label>
           <label><span className="label">Email</span><input className="field" name="email" defaultValue={site.email} /></label>

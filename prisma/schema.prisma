@@ -8,16 +8,17 @@ datasource db {
 }
 
 model User {
-  id           String     @id @default(cuid())
+  id           String      @id @default(cuid())
   name         String
-  email        String     @unique
+  email        String      @unique
   passwordHash String
   role         String
   phone        String?
-  active       Boolean    @default(true)
-  leads        Lead[]     @relation("AssignedLeads")
+  active       Boolean     @default(true)
+  leads        Lead[]      @relation("AssignedLeads")
   notes        LeadNote[]
-  createdAt    DateTime   @default(now())
+  leadEvents   LeadEvent[]
+  createdAt    DateTime    @default(now())
 }
 
 model Category {
@@ -103,15 +104,19 @@ model Lead {
   assignedToId  String?
   assignedTo    User?      @relation("AssignedLeads", fields: [assignedToId], references: [id])
   followUpDate  String?
+  nextAction    String?
+  stageReason   String?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   notes         LeadNote[]
+  events        LeadEvent[]
   quotes        Quote[]
   orders        Order[]
 
   @@index([status])
   @@index([source])
   @@index([phone])
+  @@index([followUpDate])
 }
 
 model LeadNote {
@@ -123,6 +128,27 @@ model LeadNote {
   authorName String
   body       String
   createdAt  DateTime @default(now())
+}
+
+/// CRM timeline: every stage move, follow-up, and structured note.
+model LeadEvent {
+  id             String   @id @default(cuid())
+  leadId         String
+  lead           Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  authorId       String?
+  author         User?    @relation(fields: [authorId], references: [id])
+  authorName     String
+  kind           String   // stage_change | note | follow_up | claim | assignment
+  body           String
+  reason         String?
+  fromStatus     String?
+  toStatus       String?
+  followUpDate   String?
+  followUpAction String?
+  createdAt      DateTime @default(now())
+
+  @@index([leadId, createdAt])
+  @@index([kind])
 }
 
 model Quote {

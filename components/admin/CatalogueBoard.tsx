@@ -6,6 +6,9 @@ import { money } from "@/lib/format";
 import { labelOf, PRODUCT_STATUSES } from "@/lib/types";
 import { deleteProduct, setListingVisible, updateListingPrice } from "@/lib/actions/admin";
 import { Cover } from "@/components/site/Cover";
+import { RowActions } from "@/components/admin/RowActions";
+import { ConfirmAction } from "@/components/admin/ConfirmAction";
+import { PreviewSheet } from "@/components/admin/PreviewSheet";
 
 export type ListingRow = {
   id: string;
@@ -40,7 +43,9 @@ export function CatalogueBoard({ products }: { products: ListingRow[] }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="display text-4xl text-ink">Catalogue</h1>
-          <p className="mt-2 max-w-xl text-sm text-stone">Add a listing, change its price, swap the photos, or take it off the site. Shoppers see the change on the next page load.</p>
+          <p className="mt-2 max-w-xl text-sm text-stone">
+            Preview, edit, hide, or remove listings. Removals always ask for confirmation.
+          </p>
         </div>
         <div className="flex gap-3 text-sm">
           <Link href="/api/export/products" className="btn btn-ghost">Download CSV</Link>
@@ -70,6 +75,57 @@ export function CatalogueBoard({ products }: { products: ListingRow[] }) {
                 {product.active ? "" : " · hidden from the site"}
                 {" · "}now {money(product.promoPrice ?? product.price)}
               </p>
+              <div className="mt-3">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <PreviewSheet
+                    title={product.name}
+                    editHref={`/admin/products/${product.id}`}
+                    previewHref={`/products/${product.slug}`}
+                    lines={[
+                      { label: "SKU", value: product.sku },
+                      { label: "Category", value: product.category },
+                      { label: "Status", value: labelOf(PRODUCT_STATUSES, product.stockStatus) },
+                      { label: "Price", value: money(product.price) },
+                      { label: "Sale", value: product.promoPrice != null ? money(product.promoPrice) : "—" },
+                      { label: "Visibility", value: product.active ? "On site" : "Hidden" },
+                    ]}
+                  />
+                  <RowActions
+                    previewHref={`/products/${product.slug}`}
+                    previewLabel="Live"
+                    previewExternal
+                    editHref={`/admin/products/${product.id}`}
+                    deleteAction={deleteProduct}
+                    deleteFields={{ id: product.id }}
+                    deleteLabel="Remove"
+                    deleteConfirm={{
+                      title: `Remove ${product.name}?`,
+                      message: "This deletes the listing from the catalogue. Shoppers will no longer see it.",
+                      detail: product.sku,
+                      confirmLabel: "Remove listing",
+                      cancelLabel: "Keep listing",
+                      tone: "danger",
+                      image: product.image,
+                    }}
+                  />
+                  <ConfirmAction
+                    action={setListingVisible}
+                    fields={{ id: product.id, active: product.active ? "no" : "yes" }}
+                    label={product.active ? "Hide" : "Show"}
+                    className="inline-flex h-8 items-center rounded-full border border-line px-3 text-xs font-bold text-ink hover:bg-plaster"
+                    confirm={{
+                      title: product.active ? `Hide ${product.name}?` : `Show ${product.name}?`,
+                      message: product.active
+                        ? "The product stays in the desk but disappears from the public catalogue."
+                        : "This puts the product back on the public catalogue.",
+                      confirmLabel: product.active ? "Hide from site" : "Show on site",
+                      cancelLabel: "Not now",
+                      tone: product.active ? "danger" : "primary",
+                      image: product.image,
+                    }}
+                  />
+                </div>
+              </div>
             </div>
             <div className="grid gap-2">
               <form action={updateListingPrice} className="grid grid-cols-2 gap-2">
@@ -84,19 +140,6 @@ export function CatalogueBoard({ products }: { products: ListingRow[] }) {
                 </label>
                 <button className="btn btn-ink col-span-2">Save price</button>
               </form>
-              <div className="flex flex-wrap items-center gap-3 text-sm font-semibold">
-                <Link href={`/admin/products/${product.id}`} className="text-ink">Edit listing</Link>
-                <Link href={`/products/${product.slug}`} className="text-stone">View</Link>
-                <form action={setListingVisible}>
-                  <input type="hidden" name="id" value={product.id} />
-                  <input type="hidden" name="active" value={product.active ? "no" : "yes"} />
-                  <button className="text-ink">{product.active ? "Hide" : "Show"}</button>
-                </form>
-                <form action={deleteProduct} onSubmit={(event) => { if (!confirm(`Remove ${product.name} from the catalogue?`)) event.preventDefault(); }}>
-                  <input type="hidden" name="id" value={product.id} />
-                  <button className="text-[#b42318]">Remove</button>
-                </form>
-              </div>
             </div>
           </article>
         ))}

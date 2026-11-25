@@ -54,7 +54,19 @@ export function ProductForm({
   const features = parseJson<string[]>(product?.features, []).join("\n");
   const images = parseJson<string[]>(product?.images, []).join("\n");
   return (
-    <SmartForm action={saveProduct} submit={product ? "Save listing" : "Add listing"} className="grid gap-4">
+    <SmartForm
+      action={saveProduct}
+      submit={product ? "Save listing" : "Add listing"}
+      className="grid gap-4"
+      confirm={{
+        title: product ? `Save “${product.name}”?` : "Add this listing?",
+        message: product
+          ? "Price, stock, and copy updates go live on the next page load."
+          : "The product will appear in the catalogue when marked active.",
+        confirmLabel: product ? "Save listing" : "Add listing",
+        cancelLabel: "Keep editing",
+      }}
+    >
       <input type="hidden" name="id" value={product?.id ?? ""} />
 
       <section className="panel grid gap-4 p-5">

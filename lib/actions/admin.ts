@@ -16,7 +16,19 @@ import {
   canSeeAllLeads,
 } from "../roles";
 import { sendMail } from "../mail";
-import { CREDIT_STATUSES, LEAD_STATUSES, ORDER_STATUSES, PRODUCT_STATUSES, ROLES, type FormState, num, slugify, str } from "../types";
+import {
+  CREDIT_STATUSES,
+  LEAD_STATUSES,
+  STAGE_REASONS,
+  ORDER_STATUSES,
+  PRODUCT_STATUSES,
+  ROLES,
+  leadStatusLabel,
+  type FormState,
+  num,
+  slugify,
+  str,
+} from "../types";
 
 function ok(path: string): never {
   revalidatePath(path);
@@ -212,44 +224,190 @@ export async function saveCategory(_prev: FormState, formData: FormData): Promis
   ok("/admin/categories");
 }
 
-export async function updateLead(_prev: FormState, formData: FormData): Promise<FormState> {
+async function assertLeadAccess(user: { id: string; role: string }, id: string) {
+  const lead = await prisma.lead.findUnique({ where: { id } });
+  if (!lead) return { error: "Lead not found." as const, lead: null };
+  if (!canSeeAllLeads(user.role) && lead.assignedToId && lead.assignedToId !== user.id) {
+    return { error: "This lead is assigned to someone else." as const, lead: null };
+  }
+  return { error: null, lead };
+}
+
+/** Board drag / detail stage move — confirmation note required when status changes. */
+export async function moveLeadStage(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   if (!canManageLeads(user.role)) return { error: "Your role cannot update leads." };
   const id = str(formData, "id");
-  const lead = await prisma.lead.findUnique({ where: { id } });
-  if (!lead) return { error: "Lead not found." };
-  if (!canSeeAllLeads(user.role) && lead.assignedToId && lead.assignedToId !== user.id) {
-    return { error: "This lead is assigned to someone else." };
-  }
+  const access = await assertLeadAccess(user, id);
+  if (access.error || !access.lead) return { error: access.error || "Lead not found." };
+  const lead = access.lead;
+
   const status = str(formData, "status");
   if (!LEAD_STATUSES.some((item) => item.id === status)) return { error: "Choose a status." };
-  const data: {
-    status: string;
-    assignedToId?: string | null;
-    followUpDate?: string | null;
-    quoteValue?: number | null;
-  } = { status };
-  if (formData.has("assignedToId")) data.assignedToId = str(formData, "assignedToId") || null;
-  if (formData.has("followUpDate")) data.followUpDate = str(formData, "followUpDate") || null;
-  if (formData.has("quoteValue")) data.quoteValue = str(formData, "quoteValue") ? num(formData, "quoteValue") : lead.quoteValue;
-  await prisma.lead.update({ where: { id }, data });
-  await audit("update", "lead", id, status, user.email);
+
+  const message = str(formData, "message").trim();
+  const reason = str(formData, "reason") || null;
+  if (reason && !STAGE_REASONS.some((item) => item.id === reason)) return { error: "Choose a valid reason tag." };
+
+  const followUpDate = formData.has("followUpDate") ? str(formData, "followUpDate") || null : lead.followUpDate;
+  const followUpAction = formData.has("followUpAction") ? str(formData, "followUpAction") || null : lead.nextAction;
+  const statusChanged = status !== lead.status;
+  const requireConfirm = statusChanged || str(formData, "confirm") === "1";
+
+  if (requireConfirm && message.length < 5) {
+    return { error: "Confirm with a short note (why this stage, what changed, what the customer wants)." };
+  }
+  if (statusChanged && (status === "lost" || status === "won") && !reason) {
+    return { error: "Won and lost moves need a reason tag." };
+  }
+
+  const kind = statusChanged ? "stage_change" : followUpDate || followUpAction ? "follow_up" : "note";
+  const body =
+    message ||
+    (statusChanged
+      ? `Moved from ${leadStatusLabel(lead.status)} to ${leadStatusLabel(status)}.`
+      : "Pipeline updated.");
+
+  await prisma.$transaction([
+    prisma.lead.update({
+      where: { id },
+      data: {
+        status,
+        followUpDate,
+        nextAction: followUpAction,
+        stageReason: reason ?? lead.stageReason,
+        ...(formData.has("quoteValue")
+          ? { quoteValue: str(formData, "quoteValue") ? num(formData, "quoteValue") : lead.quoteValue }
+          : {}),
+        ...(formData.has("assignedToId") ? { assignedToId: str(formData, "assignedToId") || null } : {}),
+      },
+    }),
+    prisma.leadEvent.create({
+      data: {
+        leadId: id,
+        authorId: user.id,
+        authorName: user.name,
+        kind,
+        body,
+        reason,
+        fromStatus: lead.status,
+        toStatus: status,
+        followUpDate,
+        followUpAction,
+      },
+    }),
+  ]);
+
+  await audit(statusChanged ? "stage" : "update", "lead", id, `${lead.status}→${status}`, user.email);
   revalidatePath(`/admin/leads/${id}`);
   revalidatePath("/admin/leads");
-  return { success: "Lead updated." };
+  return {
+    success: statusChanged
+      ? `Moved to ${leadStatusLabel(status)}.`
+      : "Lead updated.",
+  };
+}
+
+/** @deprecated Prefer moveLeadStage — kept so older forms still compile; enforces confirmation on status change. */
+export async function updateLead(_prev: FormState, formData: FormData): Promise<FormState> {
+  return moveLeadStage(_prev, formData);
 }
 
 export async function addNote(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   if (!canManageLeads(user.role)) return { error: "Your role cannot add notes." };
   const leadId = str(formData, "leadId");
-  const body = str(formData, "body");
+  const access = await assertLeadAccess(user, leadId);
+  if (access.error || !access.lead) return { error: access.error || "Lead not found." };
+
+  const body = str(formData, "body").trim();
   if (body.length < 2) return { error: "Write a note first." };
-  await prisma.leadNote.create({
-    data: { leadId, body, authorId: user.id, authorName: user.name },
-  });
+  const reason = str(formData, "reason") || null;
+  if (reason && !STAGE_REASONS.some((item) => item.id === reason)) return { error: "Choose a valid reason tag." };
+  const followUpDate = str(formData, "followUpDate") || null;
+  const followUpAction = str(formData, "followUpAction") || null;
+  const kind = followUpDate || followUpAction ? "follow_up" : "note";
+
+  await prisma.$transaction([
+    prisma.leadNote.create({
+      data: { leadId, body, authorId: user.id, authorName: user.name },
+    }),
+    prisma.leadEvent.create({
+      data: {
+        leadId,
+        authorId: user.id,
+        authorName: user.name,
+        kind,
+        body,
+        reason,
+        fromStatus: access.lead.status,
+        toStatus: access.lead.status,
+        followUpDate,
+        followUpAction,
+      },
+    }),
+    ...(followUpDate || followUpAction || reason
+      ? [
+          prisma.lead.update({
+            where: { id: leadId },
+            data: {
+              ...(followUpDate ? { followUpDate } : {}),
+              ...(followUpAction ? { nextAction: followUpAction } : {}),
+              ...(reason ? { stageReason: reason } : {}),
+            },
+          }),
+        ]
+      : []),
+  ]);
+
   revalidatePath(`/admin/leads/${leadId}`);
-  return { success: "Note added." };
+  revalidatePath("/admin/leads");
+  return { success: "Logged on the CRM timeline." };
+}
+
+export async function createLead(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  if (!canManageLeads(user.role)) return { error: "Your role cannot create leads." };
+  const name = str(formData, "name");
+  const phone = str(formData, "phone");
+  const location = str(formData, "location") || "Harare";
+  if (name.length < 2 || phone.length < 7) return { error: "Name and phone are required." };
+
+  const lead = await prisma.lead.create({
+    data: {
+      name,
+      phone,
+      whatsapp: str(formData, "whatsapp") || phone,
+      email: str(formData, "email") || null,
+      location,
+      company: str(formData, "company") || null,
+      customerType: str(formData, "customerType") || "retail",
+      productName: str(formData, "productName") || null,
+      requirements: str(formData, "requirements") || null,
+      source: str(formData, "source") || "direct",
+      status: "new",
+      assignedToId: user.id,
+      followUpDate: str(formData, "followUpDate") || null,
+      nextAction: str(formData, "nextAction") || "First contact",
+    },
+  });
+
+  await prisma.leadEvent.create({
+    data: {
+      leadId: lead.id,
+      authorId: user.id,
+      authorName: user.name,
+      kind: "note",
+      body: str(formData, "message") || "Lead created on the desk.",
+      toStatus: "new",
+      followUpDate: lead.followUpDate,
+      followUpAction: lead.nextAction,
+    },
+  });
+
+  await audit("create", "lead", lead.id, name, user.email);
+  revalidatePath("/admin/leads");
+  redirect(`/admin/leads/${lead.id}`);
 }
 
 export async function claimLead(formData: FormData) {
@@ -258,7 +416,25 @@ export async function claimLead(formData: FormData) {
   const id = str(formData, "id");
   const lead = await prisma.lead.findUnique({ where: { id } });
   if (!lead || (lead.assignedToId && lead.assignedToId !== user.id && !canSeeAllLeads(user.role))) return;
-  await prisma.lead.update({ where: { id }, data: { assignedToId: user.id, status: lead.status === "new" ? "contacted" : lead.status } });
+  const nextStatus = lead.status === "new" ? "contacted" : lead.status;
+  await prisma.$transaction([
+    prisma.lead.update({
+      where: { id },
+      data: { assignedToId: user.id, status: nextStatus, nextAction: lead.nextAction || "Make first contact" },
+    }),
+    prisma.leadEvent.create({
+      data: {
+        leadId: id,
+        authorId: user.id,
+        authorName: user.name,
+        kind: "claim",
+        body: `Claimed by ${user.name}.`,
+        fromStatus: lead.status,
+        toStatus: nextStatus,
+        followUpAction: lead.nextAction || "Make first contact",
+      },
+    }),
+  ]);
   await audit("claim", "lead", id, user.name, user.email);
   revalidatePath("/admin/leads");
   redirect(`/admin/leads/${id}`);
@@ -827,4 +1003,89 @@ export async function confirmOrderPayment(_prev: FormState, formData: FormData):
 
 function moneyTotal(value: number) {
   return `US$${value.toFixed(2)}`;
+}
+
+/** Remove every lead under a phone key; detach quotes/orders so history stays. */
+export async function deleteCustomer(formData: FormData) {
+  const user = await requireUser();
+  if (!canManageLeads(user.role)) return;
+  if (!canSeeAllLeads(user.role) && user.role !== "salesperson") return;
+  const key = str(formData, "key");
+  if (!key) return;
+
+  const leads = await prisma.lead.findMany({
+    select: { id: true, phone: true, name: true, assignedToId: true },
+  });
+  const group = leads.filter((lead) => (lead.phone.replace(/\D/g, "") || lead.id) === key);
+  if (!group.length) {
+    redirect("/admin/customers");
+  }
+  if (!canSeeAllLeads(user.role) && group.some((lead) => lead.assignedToId && lead.assignedToId !== user.id)) {
+    redirect(`/admin/customers/${key}`);
+  }
+
+  const ids = group.map((lead) => lead.id);
+  await prisma.$transaction([
+    prisma.quote.updateMany({ where: { leadId: { in: ids } }, data: { leadId: null } }),
+    prisma.order.updateMany({ where: { leadId: { in: ids } }, data: { leadId: null } }),
+    prisma.leadEvent.deleteMany({ where: { leadId: { in: ids } } }),
+    prisma.leadNote.deleteMany({ where: { leadId: { in: ids } } }),
+    prisma.lead.deleteMany({ where: { id: { in: ids } } }),
+  ]);
+  await audit("delete", "customer", key, group[0]?.name, user.email);
+  revalidatePath("/admin/customers");
+  revalidatePath("/admin/leads");
+  redirect("/admin/customers");
+}
+
+export async function deleteQuote(formData: FormData) {
+  const user = await requireUser();
+  if (!canManageLeads(user.role)) return;
+  const id = str(formData, "id");
+  const quote = await prisma.quote.findUnique({
+    where: { id },
+    include: { orders: { select: { id: true } }, lead: { select: { assignedToId: true } } },
+  });
+  if (!quote) {
+    redirect("/admin/quotes");
+  }
+  if (!canSeeAllLeads(user.role) && quote.lead?.assignedToId && quote.lead.assignedToId !== user.id) {
+    redirect(`/admin/quotes/${id}`);
+  }
+  if (quote.orders.length) {
+    redirect(`/admin/quotes/${id}`);
+  }
+  await prisma.quote.delete({ where: { id } });
+  await audit("delete", "quote", quote.number, undefined, user.email);
+  revalidatePath("/admin/quotes");
+  redirect("/admin/quotes");
+}
+
+export async function cancelOrder(formData: FormData) {
+  const user = await requireUser();
+  if (!canManageOrders(user.role)) return;
+  const id = str(formData, "id");
+  const order = await prisma.order.update({
+    where: { id },
+    data: { status: "cancelled" },
+  });
+  if (order.leadId) {
+    await prisma.lead.update({ where: { id: order.leadId }, data: { status: "lost" } });
+  }
+  await audit("cancel", "order", order.number, undefined, user.email);
+  revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${id}`);
+  redirect("/admin/orders");
+}
+
+export async function clearAuditLogs(formData: FormData) {
+  const user = await requireUser();
+  if (!["super_admin", "management"].includes(user.role)) return;
+  const before = str(formData, "before") || "";
+  const cutoff = before ? new Date(before) : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  if (Number.isNaN(cutoff.getTime())) return;
+  const result = await prisma.auditLog.deleteMany({ where: { createdAt: { lt: cutoff } } });
+  await audit("clear", "audit", undefined, `${result.count} rows before ${cutoff.toISOString().slice(0, 10)}`, user.email);
+  revalidatePath("/admin/activity");
+  redirect("/admin/activity");
 }

@@ -50,7 +50,19 @@ export function PromotionForm({ promotion }: { promotion?: PromotionInput | null
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-      <SmartForm action={savePromotion} submit={promotion ? "Save campaign" : "Publish campaign"} className="grid gap-4">
+      <SmartForm
+        action={savePromotion}
+        submit={promotion ? "Save campaign" : "Publish campaign"}
+        className="grid gap-4"
+        confirm={{
+          title: promotion ? `Save “${promotion.title}”?` : "Publish this campaign?",
+          message: promotion
+            ? "Live campaigns update on the promotions page after save."
+            : "This will create the campaign and can appear on the public site when marked active.",
+          confirmLabel: promotion ? "Save campaign" : "Publish campaign",
+          cancelLabel: "Keep editing",
+        }}
+      >
         <input type="hidden" name="id" value={promotion?.id ?? ""} />
 
         <section className="panel grid gap-4 p-5">

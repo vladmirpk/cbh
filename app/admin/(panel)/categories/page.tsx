@@ -5,6 +5,9 @@ import { canManageContent } from "@/lib/roles";
 import { Denied } from "@/components/ui";
 import { SmartForm } from "@/components/SmartForm";
 import { deleteCategory, saveCategory } from "@/lib/actions/admin";
+import { RowActions } from "@/components/admin/RowActions";
+import { PreviewSheet } from "@/components/admin/PreviewSheet";
+import { ConfirmAction } from "@/components/admin/ConfirmAction";
 
 export default async function CategoriesAdmin({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   const user = await requireUser();
@@ -17,7 +20,20 @@ export default async function CategoriesAdmin({ searchParams }: { searchParams: 
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <div>
-        <SmartForm action={saveCategory} submit="Save category">
+        <SmartForm
+          action={saveCategory}
+          submit="Save category"
+          confirm={
+            current
+              ? {
+                  title: `Save changes to ${current.name}?`,
+                  message: "This updates how the category appears across the catalogue.",
+                  confirmLabel: "Save category",
+                  cancelLabel: "Keep editing",
+                }
+              : undefined
+          }
+        >
           <h1 className="display text-4xl">{current ? "Edit category" : "Categories"}</h1>
           <input type="hidden" name="id" value={current?.id ?? ""} />
           <label><span className="label">Name</span><input className="field" name="name" defaultValue={current?.name} required /></label>
@@ -27,21 +43,58 @@ export default async function CategoriesAdmin({ searchParams }: { searchParams: 
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="active" value="yes" defaultChecked={current?.active ?? true} /> Visible</label>
         </SmartForm>
         {current ? (
-          <form action={deleteCategory} className="mt-4">
-            <input type="hidden" name="id" value={current.id} />
-            <button className="btn btn-ghost text-[#b42318]" type="submit">Delete or hide category</button>
-          </form>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <ConfirmAction
+              action={deleteCategory}
+              fields={{ id: current.id }}
+              label="Delete or hide"
+              confirm={{
+                title: `Remove ${current.name}?`,
+                message: "If products still use this category it will be hidden instead of deleted.",
+                confirmLabel: "Delete / hide",
+                cancelLabel: "Keep category",
+                tone: "danger",
+              }}
+            />
+            <Link href="/admin/categories" className="text-sm font-bold text-ink hover:underline">Clear form</Link>
+          </div>
         ) : null}
-        {current ? <p className="mt-3 text-sm"><Link href="/admin/categories">Clear form</Link></p> : null}
       </div>
       <ul className="grid content-start gap-2 text-sm">
         {items.map((item) => (
-          <li key={item.id} className="panel flex items-center justify-between gap-3 p-3">
+          <li key={item.id} className="panel flex flex-wrap items-center justify-between gap-3 p-3">
             <div>
-              <Link href={`/admin/categories?id=${item.id}`} className="font-semibold">{item.name}</Link>
+              <p className="font-semibold text-ink">{item.name}</p>
               <p className="text-stone">{item.active ? "Visible" : "Hidden"} · sort {item.sortOrder}</p>
             </div>
-            <Link href={`/admin/categories?id=${item.id}`} className="text-xs">Edit</Link>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <PreviewSheet
+                title={item.name}
+                editHref={`/admin/categories?id=${item.id}`}
+                previewHref={`/categories/${item.slug}`}
+                lines={[
+                  { label: "Status", value: item.active ? "Visible" : "Hidden" },
+                  { label: "Sort", value: String(item.sortOrder) },
+                  { label: "Description", value: item.description || "—" },
+                ]}
+              />
+              <RowActions
+                previewHref={`/categories/${item.slug}`}
+                previewLabel="Live"
+                previewExternal
+                editHref={`/admin/categories?id=${item.id}`}
+                deleteAction={deleteCategory}
+                deleteFields={{ id: item.id }}
+                deleteLabel="Delete"
+                deleteConfirm={{
+                  title: `Remove ${item.name}?`,
+                  message: "If products still use this category it will be hidden instead of deleted.",
+                  confirmLabel: "Delete / hide",
+                  cancelLabel: "Keep category",
+                  tone: "danger",
+                }}
+              />
+            </div>
           </li>
         ))}
       </ul>

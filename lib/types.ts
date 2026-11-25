@@ -17,6 +17,35 @@ export const LEAD_STATUSES = [
   { id: "lost", label: "Lost" },
 ] as const;
 
+/** Why a lead sits in a stage or why it moved — flexible CRM tags. */
+export const STAGE_REASONS = [
+  { id: "awaiting_customer", label: "Awaiting customer reply" },
+  { id: "awaiting_internal", label: "Awaiting internal action" },
+  { id: "preparing_quote", label: "Preparing / revising quote" },
+  { id: "price_discussion", label: "Price discussion" },
+  { id: "spec_change", label: "Customer changed requirements" },
+  { id: "credit_review", label: "Credit / account review" },
+  { id: "delivery_timing", label: "Delivery or timing" },
+  { id: "comparing_options", label: "Comparing alternatives" },
+  { id: "budget_pending", label: "Budget not ready" },
+  { id: "site_visit", label: "Site visit / inspection" },
+  { id: "won_order", label: "Order confirmed" },
+  { id: "lost_price", label: "Lost on price" },
+  { id: "lost_timing", label: "Lost on timing / stock" },
+  { id: "lost_competitor", label: "Lost to competitor" },
+  { id: "lost_other", label: "Lost — other" },
+  { id: "other", label: "Other" },
+] as const;
+
+export function leadStatusLabel(id: string) {
+  return LEAD_STATUSES.find((item) => item.id === id)?.label ?? id;
+}
+
+export function stageReasonLabel(id: string | null | undefined) {
+  if (!id) return null;
+  return STAGE_REASONS.find((item) => item.id === id)?.label ?? id;
+}
+
 export const LEAD_SOURCES = [
   "website",
   "google",

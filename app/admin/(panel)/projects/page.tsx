@@ -6,6 +6,9 @@ import { Denied } from "@/components/ui";
 import { SmartForm } from "@/components/SmartForm";
 import { deleteProject, saveProject } from "@/lib/actions/admin";
 import { parseJson } from "@/lib/types";
+import { RowActions } from "@/components/admin/RowActions";
+import { PreviewSheet } from "@/components/admin/PreviewSheet";
+import { ConfirmAction } from "@/components/admin/ConfirmAction";
 
 export default async function ProjectsAdmin({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   const user = await requireUser();
@@ -18,7 +21,20 @@ export default async function ProjectsAdmin({ searchParams }: { searchParams: Pr
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <div>
-        <SmartForm action={saveProject} submit="Save project">
+        <SmartForm
+          action={saveProject}
+          submit="Save project"
+          confirm={
+            current
+              ? {
+                  title: `Save changes to ${current.name}?`,
+                  message: "Updates go live on the projects page after save.",
+                  confirmLabel: "Save project",
+                  cancelLabel: "Keep editing",
+                }
+              : undefined
+          }
+        >
           <h1 className="display text-4xl">{current ? current.name : "New project"}</h1>
           <input type="hidden" name="id" value={current?.id ?? ""} />
           <label><span className="label">Name</span><input className="field" name="name" defaultValue={current?.name} required /></label>
@@ -38,21 +54,58 @@ export default async function ProjectsAdmin({ searchParams }: { searchParams: Pr
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="featured" value="yes" defaultChecked={current?.featured} /> Show on the home page</label>
         </SmartForm>
         {current ? (
-          <form action={deleteProject} className="mt-4">
-            <input type="hidden" name="id" value={current.id} />
-            <button className="btn btn-ghost text-[#b42318]" type="submit">Delete project</button>
-          </form>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <ConfirmAction
+              action={deleteProject}
+              fields={{ id: current.id }}
+              label="Delete project"
+              confirm={{
+                title: `Delete ${current.name}?`,
+                message: "This removes the project from the public site and the desk.",
+                confirmLabel: "Delete project",
+                cancelLabel: "Keep project",
+                tone: "danger",
+              }}
+            />
+            <Link href="/admin/projects" className="text-sm font-bold text-ink hover:underline">New project</Link>
+          </div>
         ) : null}
-        {current ? <p className="mt-3 text-sm"><Link href="/admin/projects">New project</Link></p> : null}
       </div>
       <ul className="grid content-start gap-2 text-sm">
         {items.map((item) => (
-          <li key={item.id} className="panel flex items-center justify-between gap-3 p-3">
+          <li key={item.id} className="panel flex flex-wrap items-center justify-between gap-3 p-3">
             <div>
-              <Link href={`/admin/projects?id=${item.id}`} className="font-semibold">{item.name}</Link>
+              <p className="font-semibold text-ink">{item.name}</p>
               <p className="text-stone">{item.location}</p>
             </div>
-            <Link href={`/admin/projects?id=${item.id}`} className="text-xs">Edit</Link>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <PreviewSheet
+                title={item.name}
+                editHref={`/admin/projects?id=${item.id}`}
+                previewHref={`/projects/${item.slug}`}
+                lines={[
+                  { label: "Location", value: item.location },
+                  { label: "Status", value: item.status },
+                  { label: "Featured", value: item.featured ? "Yes" : "No" },
+                  { label: "Contractor", value: item.contractor || "—" },
+                ]}
+              />
+              <RowActions
+                previewHref={`/projects/${item.slug}`}
+                previewLabel="Live"
+                previewExternal
+                editHref={`/admin/projects?id=${item.id}`}
+                deleteAction={deleteProject}
+                deleteFields={{ id: item.id }}
+                deleteConfirm={{
+                  title: `Delete ${item.name}?`,
+                  message: "This removes the project from the public site and the desk.",
+                  confirmLabel: "Delete project",
+                  cancelLabel: "Keep project",
+                  tone: "danger",
+                }}
+              />
+            </div>
           </li>
         ))}
       </ul>
