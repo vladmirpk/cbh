@@ -230,9 +230,9 @@ export function QuoteWizard({
   ] as const;
 
   return (
-    <div className="grid items-start gap-5 pb-28 lg:grid-cols-[minmax(0,1fr)_320px] lg:pb-0">
-      <div className="panel overflow-hidden p-0">
-        <div className="flex border-b border-line">
+    <div className="grid items-start gap-5 pb-28 lg:grid-cols-[minmax(0,1fr)_300px] lg:pb-0">
+      <div className="overflow-hidden rounded-[1.4rem] border border-line bg-white shadow-[0_12px_40px_rgba(12,60,140,0.06)]">
+        <div className="grid grid-cols-3 border-b border-line bg-plaster">
           {steps.map((item) => {
             const done = step > item.id;
             const active = step === item.id;
@@ -246,22 +246,29 @@ export function QuoteWizard({
                   else if (item.id === 2 && lines.length && !moqError) setStep(2);
                   else if (item.id === 3 && lines.length && location && !moqError) setStep(3);
                 }}
-                className={`flex-1 px-3 py-3 text-left text-sm font-bold transition ${
-                  active ? "bg-white text-ink" : done ? "bg-plaster text-ink" : "bg-plaster text-stone"
+                className={`relative px-3 py-3.5 text-left transition ${
+                  active ? "bg-white text-ink" : done ? "text-ink" : "text-stone"
                 } ${item.id > 1 ? "border-l border-line" : ""}`}
               >
-                <span className="block text-[10px] uppercase tracking-[0.14em] text-stone">Step {item.id}</span>
-                {item.label}
+                <span className={`mb-1 flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-extrabold ${
+                  active ? "bg-gold text-[#10233f]" : done ? "bg-ink text-white" : "bg-white text-stone"
+                }`}>
+                  {done && !active ? <Check size={12} /> : item.id}
+                </span>
+                <span className="block text-sm font-extrabold">{item.label}</span>
+                {active ? <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-gold" /> : null}
               </button>
             );
           })}
         </div>
 
-        <div className="p-4 sm:p-5">
+        <div className="p-4 sm:p-6">
           {step === 1 ? (
-            <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:gap-5">
+            <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="min-w-0">
-                <div className="relative">
+                <h2 className="text-lg font-extrabold text-ink">Add products</h2>
+                <p className="mt-1 text-sm text-stone">Search or filter, then tap Add. Edit quantities in your quote.</p>
+                <div className="relative mt-4">
                   <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone" />
                   <input
                     ref={searchRef}
@@ -284,13 +291,13 @@ export function QuoteWizard({
                   ))}
                 </div>
 
-                <ul className="mt-3 max-h-[min(52vh,420px)] divide-y divide-line overflow-y-auto rounded-2xl border border-line bg-white">
+                <ul className="mt-3 max-h-[min(48vh,400px)] divide-y divide-line overflow-y-auto rounded-2xl border border-line bg-plaster/40">
                   {filtered.length ? (
                     filtered.map((item) => {
                       const inBasket = basket.some((line) => line.productId === item.id);
                       const justAdded = flashId === item.id;
                       return (
-                        <li key={item.id} className="flex items-center gap-3 px-3 py-2.5">
+                        <li key={item.id} className="flex items-center gap-3 bg-white/80 px-3 py-3 backdrop-blur-sm">
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-extrabold text-ink">{item.name}</p>
                             <p className="truncate text-xs text-stone">
@@ -302,7 +309,7 @@ export function QuoteWizard({
                             type="button"
                             onClick={() => addProduct(item)}
                             disabled={inBasket}
-                            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                            className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
                               inBasket
                                 ? "bg-[#e7f6ee] text-[#157347]"
                                 : "bg-ink text-white hover:bg-[#0a3278]"
@@ -321,15 +328,15 @@ export function QuoteWizard({
                       );
                     })
                   ) : (
-                    <li className="px-3 py-8 text-center text-sm text-stone">No products match that search.</li>
+                    <li className="bg-white px-3 py-8 text-center text-sm text-stone">No products match that search.</li>
                   )}
                 </ul>
               </div>
 
-              <div className="min-w-0 rounded-2xl border border-line bg-plaster p-3 sm:p-4">
+              <div className="min-w-0 rounded-2xl border border-line bg-[#f8fafc] p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-extrabold text-ink">Your quote</h2>
-                  <span className="text-xs font-bold text-stone">
+                  <h2 className="text-lg font-extrabold text-ink">Your quote</h2>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-stone shadow-sm">
                     {lines.length ? `${lines.length} item${lines.length === 1 ? "" : "s"}` : "Empty"}
                   </span>
                 </div>
@@ -489,40 +496,47 @@ export function QuoteWizard({
         </div>
       </div>
 
-      <aside className="panel sticky top-20 hidden p-5 lg:block">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-stone">Estimate</p>
-        <h2 className="display mt-1 text-3xl leading-none">
-          {lines.length ? `${lines.length} item${lines.length === 1 ? "" : "s"}` : "—"}
-        </h2>
-        {lines.length ? (
-          <ul className="mt-4 max-h-48 space-y-2 overflow-auto text-sm">
-            {lines.map((line) => (
-              <li key={line.productId} className="flex justify-between gap-3 border-b border-line pb-2">
-                <span className="min-w-0">
-                  <span className="block truncate font-semibold text-ink">{line.productName}</span>
-                  <span className="text-stone">{formatQty(line.quantity)} {line.unit}</span>
-                </span>
-                <span className="shrink-0 font-semibold">{money(line.lineTotal)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-sm text-stone">Add products on the left.</p>
-        )}
-        <dl className="mt-5 grid gap-2 text-sm">
-          <div className="flex justify-between"><dt>Materials</dt><dd>{money(materialsTotal)}</dd></div>
-          <div className="flex justify-between"><dt>Delivery</dt><dd>{delivery ? money(delivery.deliveryCost) : "—"}</dd></div>
-          <div className="flex justify-between border-t border-line pt-2 text-base font-semibold">
-            <dt>Total</dt>
-            <dd>{delivery ? money(materialsTotal + delivery.deliveryCost) : money(materialsTotal)}</dd>
-          </div>
-        </dl>
-        {delivery ? (
-          <p className="mt-3 text-xs text-stone">{delivery.vehicle} · {delivery.trips} trip{delivery.trips === 1 ? "" : "s"} · {delivery.distanceKm} km</p>
-        ) : (
-          <p className="mt-3 text-xs text-stone">Delivery after you pick a location.</p>
-        )}
-        <p className="mt-4 text-xs leading-relaxed text-copper">Provisional total. CBH confirms final delivery.</p>
+      <aside className="sticky top-20 hidden overflow-hidden rounded-[1.4rem] border border-line bg-ink text-white shadow-[0_12px_40px_rgba(12,60,140,0.12)] lg:block">
+        <div className="border-b border-white/10 px-5 py-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-gold">Estimate</p>
+          <h2 className="display mt-1 text-3xl leading-none">
+            {delivery ? money(materialsTotal + delivery.deliveryCost) : money(materialsTotal)}
+          </h2>
+          <p className="mt-1 text-xs text-white/65">
+            {lines.length ? `${lines.length} line${lines.length === 1 ? "" : "s"} · provisional` : "Add products to start"}
+          </p>
+        </div>
+        <div className="px-5 py-4">
+          {lines.length ? (
+            <ul className="max-h-44 space-y-2 overflow-auto text-sm">
+              {lines.map((line) => (
+                <li key={line.productId} className="flex justify-between gap-3 border-b border-white/10 pb-2">
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">{line.productName}</span>
+                    <span className="text-white/60">{formatQty(line.quantity)} {line.unit}</span>
+                  </span>
+                  <span className="shrink-0 font-semibold">{money(line.lineTotal)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-white/65">Your running total appears here.</p>
+          )}
+          <dl className="mt-4 grid gap-2 text-sm">
+            <div className="flex justify-between text-white/80"><dt>Materials</dt><dd>{money(materialsTotal)}</dd></div>
+            <div className="flex justify-between text-white/80"><dt>Delivery</dt><dd>{delivery ? money(delivery.deliveryCost) : "—"}</dd></div>
+            <div className="flex justify-between border-t border-white/10 pt-2 text-base font-semibold">
+              <dt>Total</dt>
+              <dd className="text-gold">{delivery ? money(materialsTotal + delivery.deliveryCost) : money(materialsTotal)}</dd>
+            </div>
+          </dl>
+          {delivery ? (
+            <p className="mt-3 text-xs text-white/60">{delivery.vehicle} · {delivery.trips} trip{delivery.trips === 1 ? "" : "s"} · {delivery.distanceKm} km</p>
+          ) : (
+            <p className="mt-3 text-xs text-white/60">Delivery after you pick a location.</p>
+          )}
+          <p className="mt-4 text-xs leading-relaxed text-white/50">Provisional. CBH confirms the formal quotation.</p>
+        </div>
       </aside>
 
       {/* Mobile sticky continue — keeps thumbs off the catalogue scroll */}
