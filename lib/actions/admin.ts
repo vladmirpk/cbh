@@ -162,7 +162,9 @@ export async function setListingVisible(formData: FormData) {
 export async function uploadProductImage(formData: FormData): Promise<{ url?: string; error?: string }> {
   try {
     const user = await requireUser();
-    if (!canManageProducts(user.role)) return { error: "Your role cannot add photos." };
+    if (!canManageProducts(user.role) && !canManageContent(user.role)) {
+      return { error: "Your role cannot add photos." };
+    }
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) return { error: "Choose a photo." };
     if (file.size > 4 * 1024 * 1024) return { error: "Photos must be under 4 MB." };
@@ -316,6 +318,8 @@ export async function savePromotion(_prev: FormState, formData: FormData): Promi
     await prisma.promotion.create({ data: { ...data, slug } });
   }
   await audit("save", "promotion", id || title, title, user.email);
+  revalidatePath("/promotions");
+  revalidatePath("/");
   ok("/admin/promotions");
 }
 

@@ -3,8 +3,19 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { canManageContent } from "@/lib/roles";
 import { Denied } from "@/components/ui";
-import { SmartForm } from "@/components/SmartForm";
-import { deletePromotion, savePromotion } from "@/lib/actions/admin";
+import { deletePromotion } from "@/lib/actions/admin";
+import { PromotionForm } from "@/components/admin/PromotionForm";
+import { Cover } from "@/components/site/Cover";
+import { formatDate } from "@/lib/format";
+
+const CTA_LABEL: Record<string, string> = {
+  quote: "Get a quote",
+  buy: "Browse",
+  interest: "Register interest",
+  whatsapp: "WhatsApp",
+  delivery: "Delivery",
+  preorder: "Pre-order",
+};
 
 export default async function PromotionsAdminPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   const user = await requireUser();
@@ -14,50 +25,92 @@ export default async function PromotionsAdminPage({ searchParams }: { searchPara
     prisma.promotion.findMany({ orderBy: { createdAt: "desc" } }),
     id ? prisma.promotion.findUnique({ where: { id } }) : null,
   ]);
+  const editing = Boolean(current) || id === "new";
+
   return (
-    <div className="grid gap-8 lg:grid-cols-2">
-      <div>
-        <h1 className="display text-4xl">{current ? "Edit promotion" : "New promotion"}</h1>
-        <div className="mt-4">
-          <SmartForm action={savePromotion} submit="Save promotion">
-            <input type="hidden" name="id" value={current?.id ?? ""} />
-            <label><span className="label">Title</span><input className="field" name="title" defaultValue={current?.title} required /></label>
-            <label><span className="label">Headline</span><input className="field" name="headline" defaultValue={current?.headline} required /></label>
-            <label><span className="label">Description</span><textarea className="field min-h-24" name="description" defaultValue={current?.description} /></label>
-            <label><span className="label">Image URL</span><input className="field" name="image" defaultValue={current?.image ?? ""} /></label>
-            <label><span className="label">Price label</span><input className="field" name="priceLabel" defaultValue={current?.priceLabel ?? ""} /></label>
-            <label><span className="label">Discount</span><input className="field" name="discount" defaultValue={current?.discount ?? ""} /></label>
-            <label><span className="label">Call to action</span>
-              <select className="field" name="cta" defaultValue={current?.cta ?? "quote"}>
-                {["quote", "buy", "interest", "whatsapp", "delivery", "preorder"].map((cta) => <option key={cta}>{cta}</option>)}
-              </select>
-            </label>
-            <label><span className="label">Link</span><input className="field" name="ctaHref" defaultValue={current?.ctaHref ?? "/quote"} /></label>
-            <label><span className="label">Target location</span><input className="field" name="targetArea" defaultValue={current?.targetArea ?? ""} /></label>
-            <label><span className="label">Audience</span><input className="field" name="audience" defaultValue={current?.audience ?? ""} /></label>
-            <label><span className="label">Expiry</span><input className="field" type="date" name="expiresAt" defaultValue={current?.expiresAt ?? ""} /></label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="active" value="yes" defaultChecked={current?.active ?? true} /> Active</label>
-          </SmartForm>
+    <div className="grid gap-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone">Marketing</p>
+          <h1 className="display mt-1 text-4xl text-ink">
+            {current ? "Edit campaign" : id === "new" ? "New campaign" : "Promotions"}
+          </h1>
+          <p className="mt-2 max-w-xl text-sm text-stone">
+            Build poster-led offers with a clear call to action. Upload artwork so campaigns stay online after redeploys.
+          </p>
         </div>
-        {current ? (
-          <form action={deletePromotion} className="mt-4">
-            <input type="hidden" name="id" value={current.id} />
-            <button className="btn btn-ghost text-[#b42318]" type="submit">Delete promotion</button>
-          </form>
-        ) : null}
-        {current ? <p className="mt-3 text-sm"><Link href="/admin/promotions">New promotion</Link></p> : null}
+        {!editing ? (
+          <Link href="/admin/promotions?id=new" className="btn btn-primary">
+            New campaign
+          </Link>
+        ) : (
+          <Link href="/admin/promotions" className="btn btn-ghost border border-line">
+            All campaigns
+          </Link>
+        )}
       </div>
-      <ul className="grid gap-2 text-sm">
-        {items.map((item) => (
-          <li key={item.id} className="panel flex items-center justify-between gap-3 p-3">
-            <div>
-              <Link href={`/admin/promotions?id=${item.id}`} className="font-semibold">{item.title}</Link>
-              <p className="text-stone">{item.active ? "Live" : "Hidden"} · {item.cta}</p>
+
+      {editing ? (
+        <div className="grid gap-6">
+          <PromotionForm promotion={current} />
+          {current ? (
+            <form action={deletePromotion} className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
+              <input type="hidden" name="id" value={current.id} />
+              <button className="btn btn-ghost border border-[#f5c2c0] text-[#b42318]" type="submit">
+                Delete campaign
+              </button>
+              <p className="text-xs text-stone">Removes it from the public site and the desk list.</p>
+            </form>
+          ) : null}
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {items.map((item) => (
+            <article key={item.id} className="overflow-hidden rounded-2xl border border-line bg-white shadow-[0_8px_24px_rgba(12,60,140,0.05)]">
+              <div className="relative aspect-[16/9] bg-[#e8eef8]">
+                <Cover src={item.image} alt="" />
+                <span
+                  className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                    item.active ? "bg-[#e7f6ee] text-[#157347]" : "bg-[#e8eef8] text-stone"
+                  }`}
+                >
+                  {item.active ? "Live" : "Hidden"}
+                </span>
+              </div>
+              <div className="p-4">
+                {item.discount ? (
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-copper">{item.discount}</p>
+                ) : null}
+                <h2 className="mt-1 text-lg font-extrabold text-ink">{item.title}</h2>
+                <p className="mt-1 line-clamp-2 text-sm text-stone">{item.headline}</p>
+                <p className="mt-3 text-xs text-stone">
+                  {CTA_LABEL[item.cta] || item.cta}
+                  {item.expiresAt ? ` · ends ${item.expiresAt}` : ""}
+                  {" · "}
+                  {formatDate(item.createdAt)}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link href={`/admin/promotions?id=${item.id}`} className="btn btn-ink h-9 px-3 text-sm">
+                    Edit
+                  </Link>
+                  <Link href={`/promotions/${item.slug}`} className="btn btn-ghost h-9 border border-line px-3 text-sm" target="_blank">
+                    View
+                  </Link>
+                </div>
+              </div>
+            </article>
+          ))}
+          {!items.length ? (
+            <div className="rounded-2xl border border-dashed border-line bg-white p-8 text-center sm:col-span-2 xl:col-span-3">
+              <p className="font-extrabold text-ink">No campaigns yet</p>
+              <p className="mt-2 text-sm text-stone">Create a poster-led offer for the homepage and promotions page.</p>
+              <Link href="/admin/promotions?id=new" className="btn btn-primary mt-4">
+                New campaign
+              </Link>
             </div>
-            <Link href={`/admin/promotions?id=${item.id}`} className="text-xs">Edit</Link>
-          </li>
-        ))}
-      </ul>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
