@@ -22,7 +22,7 @@ const leadTone: Record<string, string> = {
 export function StatusPill({ status, kind = "product" }: { status: string; kind?: "product" | "lead" }) {
   const label = kind === "lead" ? labelOf(LEAD_STATUSES, status) : labelOf(PRODUCT_STATUSES, status);
   const tone = (kind === "lead" ? leadTone : productTone)[status] ?? "bg-white text-ink";
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${tone}`}>{label}</span>;
+  return <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${tone}`}>{label}</span>;
 }
 
 export function Denied() {

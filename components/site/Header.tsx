@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
-import { ChevronDown, Mail, MapPin, Menu, Phone, Search, ShoppingCart, UserRound, X } from "lucide-react";
+import { FormEvent, useEffect, useId, useRef, useState } from "react";
+import { ChevronDown, Mail, MapPin, Phone, Search, ShoppingCart, UserRound } from "lucide-react";
 import { logoutPublic } from "@/lib/actions/auth";
 import { Logo } from "./Logo";
 
@@ -22,9 +22,11 @@ export function Header({
   categories: Item[];
   user: { name: string; role: string } | null;
 }) {
-  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [count, setCount] = useState(0);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const searchId = useId();
 
   useEffect(() => {
     const read = () => {
@@ -44,6 +46,21 @@ export function Header({
     };
   }, []);
 
+  useEffect(() => {
+    function onPointer(event: MouseEvent) {
+      if (!navRef.current?.contains(event.target as Node)) setOpenMenu(null);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpenMenu(null);
+    }
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
   const menus: Group[] = [
     {
       label: "Products",
@@ -58,32 +75,18 @@ export function Header({
         { href: "/delivery", label: "Delivery rates" },
         { href: "/solar-configurator", label: "Solar configurator" },
         { href: "/quote", label: "Request a quote" },
-        { href: "/contact", label: "Contact" },
       ],
     },
     {
-      label: "About Us",
+      label: "Company",
       href: "/about",
       items: [
         { href: "/about", label: "About CBH" },
         { href: "/projects", label: "Projects" },
         { href: "/promotions", label: "Promotions" },
         { href: "/blog", label: "News" },
-        { href: "/upcoming", label: "Upcoming products" },
-      ],
-    },
-    {
-      label: "Branches",
-      href: "/branches",
-      items: [{ href: "/branches", label: "Harare — Gweru Road" }],
-    },
-    {
-      label: "Orders",
-      href: "/quote",
-      items: [
-        { href: "/quote", label: "Request a quote" },
-        { href: "/cart", label: "Cart" },
-        { href: "/account", label: "My account" },
+        { href: "/upcoming", label: "Upcoming" },
+        { href: "/branches", label: "Branches" },
       ],
     },
   ];
@@ -95,90 +98,146 @@ export function Header({
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-white shadow-[0_1px_0_rgba(15,40,90,0.08)]">
-      <div className="border-b border-[#e7eef8] text-[13px] text-[#334e75]">
-        <div className="wrap flex items-center justify-between gap-3 py-2">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
-            <a href={`tel:${phone.replace(/\s/g, "")}`} className="inline-flex items-center gap-1.5"><Phone size={14} className="text-[#0c3c8c]" />{phone}</a>
-            <a href={`mailto:${email}`} className="inline-flex items-center gap-1.5"><Mail size={14} className="text-[#0c3c8c]" />{email}</a>
-            <span className="hidden items-center gap-1.5 md:inline-flex"><MapPin size={14} className="text-[#0c3c8c]" />{address}</span>
+    <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur">
+      {/* Desktop utility strip */}
+      <div className="hidden border-b border-line text-[12px] text-stone lg:block">
+        <div className="wrap flex h-9 items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <a href={`tel:${phone.replace(/\s/g, "")}`} className="inline-flex items-center gap-1.5 hover:text-ink">
+              <Phone size={13} className="text-ink" />
+              {phone}
+            </a>
+            <a href={`mailto:${email}`} className="inline-flex items-center gap-1.5 hover:text-ink">
+              <Mail size={13} className="text-ink" />
+              {email}
+            </a>
+            <span className="inline-flex min-w-0 items-center gap-1.5 truncate">
+              <MapPin size={13} className="shrink-0 text-ink" />
+              <span className="truncate">{address}</span>
+            </span>
           </div>
-          <div className="flex items-center gap-4 font-semibold text-[#0c3c8c]">
+          <div className="flex shrink-0 items-center gap-3 font-semibold text-ink">
             {user ? (
               <>
-                <Link href={user.role === "customer" ? "/account" : "/admin"} className="inline-flex items-center gap-1"><UserRound size={15} />{user.name.split(" ")[0]}</Link>
-                <form action={logoutPublic}><button className="font-semibold">Sign out</button></form>
+                <Link href={user.role === "customer" ? "/account" : "/admin"} className="inline-flex items-center gap-1">
+                  <UserRound size={14} />
+                  {user.name.split(" ")[0]}
+                </Link>
+                <form action={logoutPublic}>
+                  <button type="submit" className="font-semibold">Sign out</button>
+                </form>
               </>
             ) : (
               <>
-                <Link href="/login" className="inline-flex items-center gap-1"><UserRound size={15} />Login</Link>
-                <Link href="/register" className="inline-flex items-center gap-1">Register</Link>
+                <Link href="/login" className="inline-flex items-center gap-1">
+                  <UserRound size={14} />
+                  Sign in
+                </Link>
+                <Link href="/register">Register</Link>
               </>
             )}
           </div>
         </div>
       </div>
-      <div className="wrap flex items-center gap-4 py-3">
-        <Logo />
-        <nav className="ml-4 hidden items-center gap-1 lg:flex">
-          <Link href="/" className="rounded-full bg-[#f5c400] px-4 py-2 text-sm font-bold text-[#10233f]">Home</Link>
-          {menus.map((menu) => (
-            <div key={menu.label} className="group relative">
-              <Link href={menu.href} className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm font-semibold text-[#0c3c8c] hover:bg-[#f4f7fc]">
-                {menu.label} <ChevronDown size={14} />
-              </Link>
-              <div className="invisible absolute left-0 top-full z-30 w-60 pt-2 opacity-0 transition group-hover:visible group-hover:opacity-100">
-                <div className="rounded-2xl border border-[#e4ecf7] bg-white p-2 shadow-xl">
-                  {menu.items.map((item) => (
-                    <Link key={item.href + item.label} href={item.href} className="block rounded-xl px-3 py-2 text-sm text-[#16325c] hover:bg-[#f4f7fc]">
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))}
-          <Link href="/contact" className="rounded-full px-3 py-2 text-sm font-semibold text-[#0c3c8c] hover:bg-[#f4f7fc]">Contact</Link>
-        </nav>
-        <form onSubmit={search} className="ml-auto hidden min-w-0 flex-1 items-center md:flex lg:max-w-xs">
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search products..."
-            className="h-11 w-full rounded-l-xl border border-r-0 border-[#d7e2f2] px-4 text-sm outline-none focus:border-[#0c3c8c]"
-          />
-          <button className="grid h-11 w-12 place-items-center rounded-r-xl bg-[#0c3c8c] text-white" aria-label="Search">
-            <Search size={18} />
-          </button>
-        </form>
-        <Link href="/cart" className="relative ml-auto grid h-11 w-11 place-items-center rounded-xl border border-[#d7e2f2] text-[#0c3c8c] md:ml-0" aria-label="Cart">
-          <ShoppingCart size={20} />
-          <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#e11d48] px-1 text-[10px] font-bold text-white">{count}</span>
-        </Link>
-        <button className="grid h-11 w-11 place-items-center rounded-xl border border-[#d7e2f2] text-[#0c3c8c] lg:hidden" onClick={() => setOpen((value) => !value)} aria-label="Menu">
-          {open ? <X size={18} /> : <Menu size={18} />}
-        </button>
-      </div>
-      {open ? (
-        <div className="border-t border-[#e7eef8] bg-white px-4 py-4 lg:hidden">
-          <form onSubmit={search} className="mb-3 flex md:hidden">
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search products..." className="h-11 flex-1 rounded-l-xl border border-[#d7e2f2] px-3 text-sm" />
-            <button className="grid h-11 w-12 place-items-center rounded-r-xl bg-[#0c3c8c] text-white" aria-label="Search"><Search size={18} /></button>
-          </form>
-          <Link href="/" className="block py-2 font-semibold text-[#0c3c8c]" onClick={() => setOpen(false)}>Home</Link>
-          {menus.map((menu) => (
-            <div key={menu.label} className="border-t border-[#eef3fa] py-2">
-              <Link href={menu.href} className="font-semibold text-[#0c3c8c]" onClick={() => setOpen(false)}>{menu.label}</Link>
-              <div className="mt-1 grid">
-                {menu.items.slice(0, 6).map((item) => (
-                  <Link key={item.href + item.label} href={item.href} className="py-1 text-sm text-[#3d5a80]" onClick={() => setOpen(false)}>{item.label}</Link>
-                ))}
-              </div>
-            </div>
-          ))}
-          <Link href="/contact" className="block border-t border-[#eef3fa] py-2 font-semibold text-[#0c3c8c]" onClick={() => setOpen(false)}>Contact</Link>
+
+      {/* Main bar — mobile: logo + cart only (bottom dock is primary nav) */}
+      <div className="wrap flex h-14 items-center gap-3 lg:h-16 lg:gap-5">
+        <div className="min-w-0 shrink">
+          <Logo />
         </div>
-      ) : null}
+
+        <nav ref={navRef} className="hidden min-w-0 flex-1 items-center gap-0.5 lg:flex" aria-label="Primary">
+          {menus.map((menu) => {
+            const expanded = openMenu === menu.label;
+            return (
+              <div
+                key={menu.label}
+                className="relative"
+                onMouseEnter={() => setOpenMenu(menu.label)}
+                onMouseLeave={() => setOpenMenu(null)}
+              >
+                <button
+                  type="button"
+                  className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-ink transition hover:bg-plaster ${expanded ? "bg-plaster" : ""}`}
+                  aria-expanded={expanded}
+                  aria-haspopup="true"
+                  onClick={() => setOpenMenu(expanded ? null : menu.label)}
+                >
+                  {menu.label}
+                  <ChevronDown size={14} className={`transition ${expanded ? "rotate-180" : ""}`} />
+                </button>
+                {expanded ? (
+                  <div className="absolute left-0 top-full z-30 w-56 pt-1">
+                    <div className="rounded-2xl border border-line bg-white p-1.5 shadow-[0_16px_40px_rgba(12,60,140,0.12)]">
+                      <Link
+                        href={menu.href}
+                        className="block rounded-xl px-3 py-2 text-sm font-semibold text-ink hover:bg-plaster"
+                        onClick={() => setOpenMenu(null)}
+                      >
+                        View all
+                      </Link>
+                      {menu.items.map((item) => (
+                        <Link
+                          key={item.href + item.label}
+                          href={item.href}
+                          className="block rounded-xl px-3 py-2 text-sm text-stone hover:bg-plaster hover:text-ink"
+                          onClick={() => setOpenMenu(null)}
+                        >
+                          {item.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+          <Link href="/contact" className="rounded-lg px-3 py-2 text-sm font-semibold text-ink hover:bg-plaster">
+            Contact
+          </Link>
+        </nav>
+
+        <div className="ml-auto flex items-center gap-2 lg:gap-3">
+          <form onSubmit={search} className="hidden items-center xl:flex" role="search">
+            <label htmlFor={searchId} className="sr-only">Search products</label>
+            <input
+              id={searchId}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search products"
+              className="h-10 w-44 rounded-l-xl border border-r-0 border-line bg-plaster px-3 text-sm outline-none focus:border-ink focus:bg-white lg:w-52"
+            />
+            <button type="submit" className="grid h-10 w-10 place-items-center rounded-r-xl bg-ink text-white" aria-label="Search">
+              <Search size={16} />
+            </button>
+          </form>
+
+          <Link href="/quote" className="btn btn-primary hidden h-10 px-4 text-sm lg:inline-flex">
+            Get a quote
+          </Link>
+
+          <Link
+            href={user ? (user.role === "customer" ? "/account" : "/admin") : "/login"}
+            className="grid h-10 w-10 place-items-center rounded-xl border border-line text-ink hover:bg-plaster lg:hidden"
+            aria-label={user ? "Account" : "Sign in"}
+          >
+            <UserRound size={18} />
+          </Link>
+
+          <Link
+            href="/cart"
+            className="relative grid h-10 w-10 place-items-center rounded-xl border border-line text-ink hover:bg-plaster"
+            aria-label={count ? `Cart, ${count} items` : "Cart"}
+          >
+            <ShoppingCart size={18} />
+            {count > 0 ? (
+              <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#e11d48] px-1 text-[10px] font-bold text-white">
+                {count}
+              </span>
+            ) : null}
+          </Link>
+        </div>
+      </div>
     </header>
   );
 }
