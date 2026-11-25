@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useActionState } from "react";
+import { Check, Minus, Plus, Search, Trash2 } from "lucide-react";
 import { createQuote } from "@/lib/actions/public";
 import { calculateDelivery, type RateCard, type VehicleRate } from "@/lib/delivery";
 import { formatQty, money } from "@/lib/format";
 import { canQuoteStatus, unitPrice } from "@/lib/types";
 import { ConfirmSheet, type ConfirmPayload } from "./ConfirmSheet";
-import { Cover } from "./Cover";
 import { ZonePicker, type LocationChoice, type ZoneOption } from "./ZonePicker";
 
 type WizardProduct = {
@@ -78,22 +78,24 @@ export function QuoteWizard({
   fromCart?: boolean;
 }) {
   const initial = products.find((item) => item.slug === initialSlug) ?? null;
+  const categories = useMemo(
+    () => [...new Set(products.map((item) => item.category))].sort(),
+    [products],
+  );
   const [step, setStep] = useState(1);
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState(initial?.id ?? products[0]?.id ?? "");
-  const [draftQty, setDraftQty] = useState(initial ? String(defaultQty(initial)) : "1");
+  const [category, setCategory] = useState<string>("all");
   const [basket, setBasket] = useState<BasketLine[]>(() =>
     initial ? [{ productId: initial.id, quantity: defaultQty(initial) }] : [],
   );
+  const [flashId, setFlashId] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationChoice | null>(null);
   const [source, setSource] = useState(initialSource || "website");
   const [confirm, setConfirm] = useState<(ConfirmPayload & { kind: "remove" | "submit"; productId?: string }) | null>(null);
   const skipConfirm = useRef(false);
-  const stepTopRef = useRef<HTMLDivElement>(null);
   const cartLoaded = useRef(false);
-  const skipStepScroll = useRef(true);
+  const searchRef = useRef<HTMLInputElement>(null);
   const [state, action, pending] = useActionState(createQuote, null);
-  const selected = products.find((item) => item.id === selectedId) ?? null;
 
   useEffect(() => {
     if (initialSource) return;
@@ -108,30 +110,23 @@ export function QuoteWizard({
     if (!fromStorage.length) return;
     cartLoaded.current = true;
     setBasket(fromStorage);
-    const first = products.find((item) => item.id === fromStorage[0]?.productId);
-    if (first) {
-      setSelectedId(first.id);
-      setDraftQty(String(fromStorage[0].quantity));
-    }
   }, [products, initial, fromCart]);
 
   useEffect(() => {
-    if (skipStepScroll.current) {
-      skipStepScroll.current = false;
-      return;
-    }
-    stepTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [step]);
+    if (!flashId) return;
+    const timer = window.setTimeout(() => setFlashId(null), 1200);
+    return () => window.clearTimeout(timer);
+  }, [flashId]);
 
-  function goStep(next: number) {
-    setStep(next);
-  }
-
-  const filtered = products.filter((item) => {
-    if (!canQuoteStatus(item.stockStatus)) return false;
-    const hay = `${item.name} ${item.sku} ${item.category}`.toLowerCase();
-    return hay.includes(query.toLowerCase());
-  });
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return products.filter((item) => {
+      if (!canQuoteStatus(item.stockStatus)) return false;
+      if (category !== "all" && item.category !== category) return false;
+      if (!q) return true;
+      return `${item.name} ${item.sku} ${item.category}`.toLowerCase().includes(q);
+    });
+  }, [products, query, category]);
 
   const lines = useMemo(() => {
     return basket
@@ -150,7 +145,6 @@ export function QuoteWizard({
           lineTotal: Math.round(price * quantity * 100) / 100,
           weightKg: Math.round(product.weightKg * quantity * 100) / 100,
           moq: product.moq,
-          image: product.image || null,
         };
       })
       .filter(Boolean) as Array<{
@@ -163,7 +157,6 @@ export function QuoteWizard({
       lineTotal: number;
       weightKg: number;
       moq: number;
-      image: string | null;
     }>;
   }, [basket, products]);
 
@@ -181,22 +174,28 @@ export function QuoteWizard({
     });
   }, [location, lines.length, totalWeight, rates, vehicles]);
 
-  const draft = Number(draftQty);
-
-  function applyAddSelected() {
-    if (!selected || !Number.isFinite(draft) || draft <= 0 || draft < selected.moq) return;
+  function addProduct(product: WizardProduct) {
     setBasket((current) => {
-      const existing = current.find((line) => line.productId === selected.id);
-      if (existing) {
-        return current.map((line) =>
-          line.productId === selected.id ? { ...line, quantity: draft } : line,
-        );
-      }
-      return [...current, { productId: selected.id, quantity: draft }];
+      const existing = current.find((line) => line.productId === product.id);
+      if (existing) return current;
+      return [...current, { productId: product.id, quantity: defaultQty(product) }];
     });
+    setFlashId(product.id);
   }
 
-  function updateQty(productId: string, value: string) {
+  function bumpQty(productId: string, delta: number) {
+    setBasket((current) =>
+      current.map((line) => {
+        if (line.productId !== productId) return line;
+        const product = products.find((item) => item.id === productId);
+        const moq = product?.moq ?? 1;
+        const next = Math.max(moq, line.quantity + delta);
+        return { ...line, quantity: next };
+      }),
+    );
+  }
+
+  function setQty(productId: string, value: string) {
     const quantity = Number(value);
     if (!Number.isFinite(quantity) || quantity <= 0) return;
     setBasket((current) =>
@@ -213,7 +212,7 @@ export function QuoteWizard({
       title: "Remove from quote?",
       message: line.productName,
       confirmLabel: "Remove",
-      cancelLabel: "Back",
+      cancelLabel: "Keep",
       tone: "danger",
     });
   }
@@ -224,198 +223,330 @@ export function QuoteWizard({
     setConfirm(null);
   }
 
-  return (
-    <div className="grid items-start gap-6 pb-24 md:pb-0 lg:grid-cols-[1fr_340px]">
-      <div className="panel p-5 md:p-7">
-        <div ref={stepTopRef} className="scroll-mt-24" />
-        <ol className="mb-6 flex flex-wrap gap-4 text-xs uppercase tracking-[0.14em] text-stone">
-          {["Products", "Location", "Your details"].map((label, index) => (
-            <li key={label} className={step === index + 1 ? "text-brick" : ""}>{index + 1}. {label}</li>
-          ))}
-        </ol>
+  const steps = [
+    { id: 1, label: "Products" },
+    { id: 2, label: "Location" },
+    { id: 3, label: "Details" },
+  ] as const;
 
-        {step === 1 ? (
-          <div className="grid gap-4">
-            <p className="text-sm text-stone">Add products, then continue.</p>
-            <label>
-              <span className="label">Search</span>
-              <input className="field" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Bricks, pavers, solar…" />
-            </label>
-            <div className="grid max-h-64 gap-2 overflow-auto">
-              {filtered.map((item) => {
-                const inBasket = basket.some((line) => line.productId === item.id);
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedId(item.id);
-                      const existing = basket.find((line) => line.productId === item.id);
-                      setDraftQty(String(existing?.quantity ?? defaultQty(item)));
-                    }}
-                    className={`grid grid-cols-[64px_1fr] items-center gap-3 rounded-2xl border px-3 py-3 text-left ${item.id === selectedId ? "border-brick bg-white" : "border-line"}`}
-                  >
-                    <div className="aspect-square overflow-hidden rounded-xl bg-[#e8eef8]">
-                      <Cover src={item.image} alt="" />
-                    </div>
-                    <span>
-                      <span className="flex items-start justify-between gap-2">
-                        <span className="block font-semibold text-ink">{item.name}</span>
-                        {inBasket ? <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-[#157347]">In quote</span> : null}
-                      </span>
-                      <span className="text-sm text-stone">{item.category} · {money(unitPrice(item))} / {item.unit} · min {item.moq}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            {selected ? (
-              <div className="grid gap-3 rounded-2xl border border-line bg-plaster p-4 sm:grid-cols-[72px_1fr_auto] sm:items-end">
-                <div className="aspect-square overflow-hidden rounded-xl bg-[#e8eef8]">
-                  <Cover src={selected.image} alt={selected.name} />
-                </div>
-                <label>
-                  <span className="label">Quantity ({selected.unit})</span>
+  return (
+    <div className="grid items-start gap-5 pb-28 lg:grid-cols-[minmax(0,1fr)_320px] lg:pb-0">
+      <div className="panel overflow-hidden p-0">
+        <div className="flex border-b border-line">
+          {steps.map((item) => {
+            const done = step > item.id;
+            const active = step === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                disabled={item.id > 1 && !lines.length}
+                onClick={() => {
+                  if (item.id === 1) setStep(1);
+                  else if (item.id === 2 && lines.length && !moqError) setStep(2);
+                  else if (item.id === 3 && lines.length && location && !moqError) setStep(3);
+                }}
+                className={`flex-1 px-3 py-3 text-left text-sm font-bold transition ${
+                  active ? "bg-white text-ink" : done ? "bg-plaster text-ink" : "bg-plaster text-stone"
+                } ${item.id > 1 ? "border-l border-line" : ""}`}
+              >
+                <span className="block text-[10px] uppercase tracking-[0.14em] text-stone">Step {item.id}</span>
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="p-4 sm:p-5">
+          {step === 1 ? (
+            <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:gap-5">
+              <div className="min-w-0">
+                <div className="relative">
+                  <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone" />
                   <input
-                    className="field"
-                    inputMode="decimal"
-                    value={draftQty}
-                    onChange={(event) => setDraftQty(event.target.value)}
+                    ref={searchRef}
+                    className="field pl-9"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search products to add…"
+                    aria-label="Search products"
                   />
-                  {Number.isFinite(draft) && draft < selected.moq ? (
-                    <p className="mt-1 text-sm text-brick">Min {selected.moq} {selected.unit}</p>
-                  ) : null}
-                </label>
+                </div>
+
+                <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+                  <Chip active={category === "all"} onClick={() => setCategory("all")}>
+                    All
+                  </Chip>
+                  {categories.map((name) => (
+                    <Chip key={name} active={category === name} onClick={() => setCategory(name)}>
+                      {name}
+                    </Chip>
+                  ))}
+                </div>
+
+                <ul className="mt-3 max-h-[min(52vh,420px)] divide-y divide-line overflow-y-auto rounded-2xl border border-line bg-white">
+                  {filtered.length ? (
+                    filtered.map((item) => {
+                      const inBasket = basket.some((line) => line.productId === item.id);
+                      const justAdded = flashId === item.id;
+                      return (
+                        <li key={item.id} className="flex items-center gap-3 px-3 py-2.5">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-extrabold text-ink">{item.name}</p>
+                            <p className="truncate text-xs text-stone">
+                              {money(unitPrice(item))} / {item.unit}
+                              <span className="text-stone/70"> · min {item.moq}</span>
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => addProduct(item)}
+                            disabled={inBasket}
+                            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                              inBasket
+                                ? "bg-[#e7f6ee] text-[#157347]"
+                                : "bg-ink text-white hover:bg-[#0a3278]"
+                            }`}
+                          >
+                            {inBasket ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Check size={13} />
+                                {justAdded ? "Added" : "In quote"}
+                              </span>
+                            ) : (
+                              "Add"
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })
+                  ) : (
+                    <li className="px-3 py-8 text-center text-sm text-stone">No products match that search.</li>
+                  )}
+                </ul>
+              </div>
+
+              <div className="min-w-0 rounded-2xl border border-line bg-plaster p-3 sm:p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-extrabold text-ink">Your quote</h2>
+                  <span className="text-xs font-bold text-stone">
+                    {lines.length ? `${lines.length} item${lines.length === 1 ? "" : "s"}` : "Empty"}
+                  </span>
+                </div>
+
+                {lines.length ? (
+                  <ul className="mt-3 space-y-2">
+                    {lines.map((line) => (
+                      <li key={line.productId} className="rounded-xl border border-line bg-white p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-extrabold text-ink">{line.productName}</p>
+                            <p className="text-xs text-stone">{money(line.unitPrice)} / {line.unit}</p>
+                          </div>
+                          <button
+                            type="button"
+                            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-stone hover:bg-plaster hover:text-[#b42318]"
+                            aria-label={`Remove ${line.productName}`}
+                            onClick={() => askRemoveLine(line.productId)}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <div className="inline-flex items-center rounded-xl border border-line bg-plaster">
+                            <button
+                              type="button"
+                              className="grid h-9 w-9 place-items-center text-ink"
+                              aria-label="Decrease quantity"
+                              onClick={() => bumpQty(line.productId, -Math.max(1, Math.round(line.moq / 10) || 1))}
+                            >
+                              <Minus size={14} />
+                            </button>
+                            <input
+                              className="h-9 w-16 border-x border-line bg-white text-center text-sm font-bold outline-none"
+                              inputMode="decimal"
+                              value={String(line.quantity)}
+                              onChange={(event) => setQty(line.productId, event.target.value)}
+                              aria-label={`Quantity for ${line.productName}`}
+                            />
+                            <button
+                              type="button"
+                              className="grid h-9 w-9 place-items-center text-ink"
+                              aria-label="Increase quantity"
+                              onClick={() => bumpQty(line.productId, Math.max(1, Math.round(line.moq / 10) || 1))}
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                          <p className="text-sm font-extrabold text-ink">{money(line.lineTotal)}</p>
+                        </div>
+                        {line.quantity < line.moq ? (
+                          <p className="mt-1 text-xs font-semibold text-[#b42318]">
+                            Minimum {line.moq} {line.unit}
+                          </p>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-4 text-sm text-stone">
+                    Tap <span className="font-bold text-ink">Add</span> beside a product. Quantities edit here.
+                  </p>
+                )}
+
+                {moqError ? (
+                  <p className="mt-3 text-sm font-semibold text-[#b42318]">
+                    Raise quantity for {moqError.productName} (min {moqError.moq}).
+                  </p>
+                ) : null}
+
                 <button
+                  className="btn btn-ink mt-4 hidden w-full lg:inline-flex"
                   type="button"
-                  className="btn btn-primary w-full sm:w-auto"
-                  disabled={!Number.isFinite(draft) || draft < selected.moq}
-                  onClick={applyAddSelected}
+                  disabled={!lines.length || Boolean(moqError)}
+                  onClick={() => setStep(2)}
                 >
-                  {basket.some((line) => line.productId === selected.id) ? "Update" : "Add"}
+                  Continue to location
                 </button>
               </div>
-            ) : null}
+            </div>
+          ) : null}
 
-            {lines.length ? (
-              <div className="grid gap-2">
-                <p className="label">In this quote</p>
-                {lines.map((line) => (
-                  <div key={line.productId} className="grid grid-cols-[64px_1fr] gap-3 rounded-2xl border border-line bg-white p-3 sm:grid-cols-[72px_1fr_120px_auto] sm:items-center">
-                    <div className="aspect-square overflow-hidden rounded-xl bg-[#e8eef8]">
-                      <Cover src={line.image} alt={line.productName} />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-ink">{line.productName}</p>
-                      <p className="text-sm text-stone">{line.sku} · {money(line.unitPrice)} / {line.unit}</p>
-                    </div>
-                    <input
-                      className="field col-span-2 sm:col-span-1"
-                      inputMode="decimal"
-                      value={String(line.quantity)}
-                      onChange={(event) => updateQty(line.productId, event.target.value)}
-                      aria-label={`Quantity for ${line.productName}`}
-                    />
-                    <div className="col-span-2 flex items-center justify-between gap-3 sm:col-span-1 sm:justify-end">
-                      <span className="text-sm font-semibold">{money(line.lineTotal)}</span>
-                      <button type="button" className="text-sm font-semibold text-brick" onClick={() => askRemoveLine(line.productId)}>
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                ))}
+          {step === 2 ? (
+            <div className="grid gap-4">
+              <p className="text-sm text-stone">Where should we deliver? Delivery estimate updates beside.</p>
+              <ZonePicker zones={zones} depot={depot} roadFactor={rates.roadFactor} mapsKey={mapsKey} value={location} onChange={setLocation} />
+              <div className="flex flex-wrap gap-2">
+                <button className="btn btn-ghost" type="button" onClick={() => setStep(1)}>Back to products</button>
+                <button className="btn btn-ink" type="button" disabled={!location} onClick={() => setStep(3)}>
+                  Continue to details
+                </button>
               </div>
-            ) : null}
+            </div>
+          ) : null}
 
-            {moqError ? (
-              <p className="text-sm text-brick">
-                {moqError.productName}: min {moqError.moq} {moqError.unit}
+          {step === 3 && location && lines.length ? (
+            <form
+              id="cbh-quote-form"
+              action={action}
+              className="grid max-w-xl gap-3"
+              onSubmit={(event) => {
+                if (skipConfirm.current) {
+                  skipConfirm.current = false;
+                  return;
+                }
+                event.preventDefault();
+                setConfirm({
+                  kind: "submit",
+                  title: "Create quote?",
+                  message: `${lines.length} item${lines.length === 1 ? "" : "s"} · ${money(materialsTotal + (delivery?.deliveryCost || 0))}`,
+                  confirmLabel: "Create quote",
+                  cancelLabel: "Back",
+                });
+              }}
+            >
+              <input
+                type="hidden"
+                name="items"
+                value={JSON.stringify(
+                  lines.map((line) => ({
+                    productId: line.productId,
+                    productName: line.productName,
+                    sku: line.sku,
+                    quantity: line.quantity,
+                    unit: line.unit,
+                    unitPrice: line.unitPrice,
+                    lineTotal: line.lineTotal,
+                    weightKg: line.weightKg,
+                  })),
+                )}
+              />
+              <input type="hidden" name="zoneId" value={location.zoneId} />
+              <input type="hidden" name="method" value={location.method} />
+              <input type="hidden" name="lat" value={location.lat} />
+              <input type="hidden" name="lng" value={location.lng} />
+              <input type="hidden" name="source" value={source} />
+              <label><span className="label">Name</span><input className="field" name="name" required autoComplete="name" /></label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label><span className="label">Phone</span><input className="field" name="phone" required autoComplete="tel" /></label>
+                <label><span className="label">WhatsApp</span><input className="field" name="whatsapp" placeholder="Same as phone if blank" /></label>
+              </div>
+              <label><span className="label">Email</span><input className="field" name="email" type="email" autoComplete="email" /></label>
+              <label><span className="label">Site / stand</span><input className="field" name="address" /></label>
+              <label><span className="label">Date required</span><input className="field" name="requiredDate" type="date" /></label>
+              <label><span className="label">Notes</span><textarea className="field min-h-20" name="requirements" /></label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="customerType" value="contractor" /> Contractor / business
+              </label>
+              <label><span className="label">Company</span><input className="field" name="company" /></label>
+              {state?.error ? <p className="text-sm font-semibold text-[#b42318]">{state.error}</p> : null}
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button className="btn btn-ghost" type="button" onClick={() => setStep(2)}>Back</button>
+                <button className="btn btn-primary" disabled={pending}>{pending ? "Creating…" : "Create quote"}</button>
+              </div>
+            </form>
+          ) : null}
+        </div>
+      </div>
+
+      <aside className="panel sticky top-20 hidden p-5 lg:block">
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-stone">Estimate</p>
+        <h2 className="display mt-1 text-3xl leading-none">
+          {lines.length ? `${lines.length} item${lines.length === 1 ? "" : "s"}` : "—"}
+        </h2>
+        {lines.length ? (
+          <ul className="mt-4 max-h-48 space-y-2 overflow-auto text-sm">
+            {lines.map((line) => (
+              <li key={line.productId} className="flex justify-between gap-3 border-b border-line pb-2">
+                <span className="min-w-0">
+                  <span className="block truncate font-semibold text-ink">{line.productName}</span>
+                  <span className="text-stone">{formatQty(line.quantity)} {line.unit}</span>
+                </span>
+                <span className="shrink-0 font-semibold">{money(line.lineTotal)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-stone">Add products on the left.</p>
+        )}
+        <dl className="mt-5 grid gap-2 text-sm">
+          <div className="flex justify-between"><dt>Materials</dt><dd>{money(materialsTotal)}</dd></div>
+          <div className="flex justify-between"><dt>Delivery</dt><dd>{delivery ? money(delivery.deliveryCost) : "—"}</dd></div>
+          <div className="flex justify-between border-t border-line pt-2 text-base font-semibold">
+            <dt>Total</dt>
+            <dd>{delivery ? money(materialsTotal + delivery.deliveryCost) : money(materialsTotal)}</dd>
+          </div>
+        </dl>
+        {delivery ? (
+          <p className="mt-3 text-xs text-stone">{delivery.vehicle} · {delivery.trips} trip{delivery.trips === 1 ? "" : "s"} · {delivery.distanceKm} km</p>
+        ) : (
+          <p className="mt-3 text-xs text-stone">Delivery after you pick a location.</p>
+        )}
+        <p className="mt-4 text-xs leading-relaxed text-copper">Provisional total. CBH confirms final delivery.</p>
+      </aside>
+
+      {/* Mobile sticky continue — keeps thumbs off the catalogue scroll */}
+      {step === 1 ? (
+        <div className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 border-t border-line bg-white/95 px-4 py-3 backdrop-blur md:bottom-0 lg:hidden">
+          <div className="mx-auto flex max-w-lg items-center gap-3">
+            <div className="min-w-0 flex-1 text-sm">
+              <p className="font-extrabold text-ink">{money(materialsTotal)}</p>
+              <p className="truncate text-xs text-stone">
+                {lines.length ? `${lines.length} item${lines.length === 1 ? "" : "s"} in quote` : "Add at least one product"}
               </p>
-            ) : null}
-
+            </div>
             <button
-              className="btn btn-ink"
+              className="btn btn-ink h-11 shrink-0 px-4"
               type="button"
               disabled={!lines.length || Boolean(moqError)}
-              onClick={() => goStep(2)}
+              onClick={() => setStep(2)}
             >
-              Next: Location
+              Location
             </button>
           </div>
-        ) : null}
+        </div>
+      ) : null}
 
-        {step === 2 ? (
-          <div className="grid gap-4">
-            <ZonePicker zones={zones} depot={depot} roadFactor={rates.roadFactor} mapsKey={mapsKey} value={location} onChange={setLocation} />
-            <div className="flex gap-2">
-              <button className="btn btn-ghost" type="button" onClick={() => goStep(1)}>Back</button>
-              <button className="btn btn-ink" type="button" disabled={!location} onClick={() => goStep(3)}>Next: Your details</button>
-            </div>
-          </div>
-        ) : null}
-
-        {step === 3 && location && lines.length ? (
-          <form
-            id="cbh-quote-form"
-            action={action}
-            className="grid gap-4"
-            onSubmit={(event) => {
-              if (skipConfirm.current) {
-                skipConfirm.current = false;
-                return;
-              }
-              event.preventDefault();
-              setConfirm({
-                kind: "submit",
-                title: "Create quote?",
-                message: `${lines.length} item${lines.length === 1 ? "" : "s"} · ${money(materialsTotal + (delivery?.deliveryCost || 0))}`,
-                confirmLabel: "Create quote",
-                cancelLabel: "Back",
-              });
-            }}
-          >
-            <input
-              type="hidden"
-              name="items"
-              value={JSON.stringify(
-                lines.map((line) => ({
-                  productId: line.productId,
-                  productName: line.productName,
-                  sku: line.sku,
-                  quantity: line.quantity,
-                  unit: line.unit,
-                  unitPrice: line.unitPrice,
-                  lineTotal: line.lineTotal,
-                  weightKg: line.weightKg,
-                })),
-              )}
-            />
-            <input type="hidden" name="zoneId" value={location.zoneId} />
-            <input type="hidden" name="method" value={location.method} />
-            <input type="hidden" name="lat" value={location.lat} />
-            <input type="hidden" name="lng" value={location.lng} />
-            <input type="hidden" name="source" value={source} />
-            <label><span className="label">Name</span><input className="field" name="name" required /></label>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label><span className="label">Phone</span><input className="field" name="phone" required /></label>
-              <label><span className="label">WhatsApp</span><input className="field" name="whatsapp" placeholder="Same as phone if blank" /></label>
-            </div>
-            <label><span className="label">Email</span><input className="field" name="email" type="email" /></label>
-            <label><span className="label">Site / stand</span><input className="field" name="address" /></label>
-            <label><span className="label">Date required</span><input className="field" name="requiredDate" type="date" /></label>
-            <label><span className="label">Notes</span><textarea className="field min-h-24" name="requirements" /></label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="customerType" value="contractor" /> Contractor / business
-            </label>
-            <label><span className="label">Company</span><input className="field" name="company" /></label>
-            {state?.error ? <p className="text-sm text-brick">{state.error}</p> : null}
-            <div className="flex gap-2">
-              <button className="btn btn-ghost" type="button" onClick={() => goStep(2)}>Back</button>
-              <button className="btn btn-primary" disabled={pending}>{pending ? "Creating…" : "Create quote"}</button>
-            </div>
-          </form>
-        ) : null}
-      </div>
       <ConfirmSheet
         open={Boolean(confirm)}
         payload={confirm}
@@ -432,45 +563,28 @@ export function QuoteWizard({
           }
         }}
       />
-
-      <aside className="panel sticky top-24 p-5">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-stone">Estimate</p>
-        <h2 className="display mt-2 text-3xl leading-none">
-          {lines.length ? `${lines.length} item${lines.length === 1 ? "" : "s"}` : "Empty"}
-        </h2>
-        {lines.length ? (
-          <ul className="mt-4 max-h-56 space-y-2 overflow-auto text-sm">
-            {lines.map((line) => (
-              <li key={line.productId} className="grid grid-cols-[44px_1fr_auto] items-center gap-2 border-b border-line pb-2">
-                <div className="aspect-square overflow-hidden rounded-lg bg-[#e8eef8]">
-                  <Cover src={line.image} alt="" />
-                </div>
-                <span>
-                  <span className="font-semibold text-ink">{line.productName}</span>
-                  <span className="block text-stone">{formatQty(line.quantity)} {line.unit}</span>
-                </span>
-                <span className="shrink-0 font-semibold">{money(line.lineTotal)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-sm text-stone">Add products to continue.</p>
-        )}
-        <dl className="mt-5 grid gap-2 text-sm">
-          <div className="flex justify-between"><dt>Materials</dt><dd>{money(materialsTotal)}</dd></div>
-          <div className="flex justify-between"><dt>Delivery</dt><dd>{delivery ? money(delivery.deliveryCost) : "—"}</dd></div>
-          <div className="flex justify-between border-t border-line pt-2 text-base font-semibold">
-            <dt>Total</dt>
-            <dd>{delivery ? money(materialsTotal + delivery.deliveryCost) : "—"}</dd>
-          </div>
-        </dl>
-        {delivery ? (
-          <p className="mt-3 text-xs text-stone">{delivery.vehicle} · {delivery.trips} trip{delivery.trips === 1 ? "" : "s"} · {delivery.distanceKm} km</p>
-        ) : (
-          <p className="mt-3 text-xs text-stone">Pick a location for delivery.</p>
-        )}
-        <p className="mt-4 text-xs leading-relaxed text-copper">Provisional total. CBH confirms final delivery.</p>
-      </aside>
     </div>
+  );
+}
+
+function Chip({
+  children,
+  active,
+  onClick,
+}: {
+  children: ReactNode;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition ${
+        active ? "bg-ink text-white" : "border border-line bg-white text-stone hover:text-ink"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

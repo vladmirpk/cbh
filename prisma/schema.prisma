@@ -49,6 +49,15 @@ model Product {
   weightKg        Float    @default(1)
   deliveryNotes   String?
   brand           String?
+  modelNumber     String?
+  barcode         String?
+  colour          String?
+  sizeLabel       String?
+  packSize        String?
+  leadTimeDays    Int?
+  leadTimeNote    String?
+  useCase         String?
+  features        String   @default("[]")
   tags            String   @default("")
   images          String   @default("[]")
   relatedSlugs    String   @default("")

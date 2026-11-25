@@ -31,8 +31,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ kin
   } else if (kind === "products") {
     if (!canManageProducts(session.role)) return new NextResponse("Forbidden", { status: 403 });
     const products = await prisma.product.findMany({ include: { category: true } });
-    rows = [["SKU", "Name", "Category", "Brand", "Price", "Unit", "Status", "MOQ", "Stock qty", "Weight kg"],
-      ...products.map((product) => [product.sku, product.name, product.category.name, product.brand ?? "", String(product.price), product.unit, product.stockStatus, String(product.moq), String(product.stockQty ?? ""), String(product.weightKg)])];
+    rows = [["SKU", "Name", "Category", "Brand", "Model", "Colour", "Size", "Price", "Unit", "Status", "MOQ", "Stock qty", "Weight kg"],
+      ...products.map((product) => [product.sku, product.name, product.category.name, product.brand ?? "", product.modelNumber ?? "", product.colour ?? "", product.sizeLabel ?? "", String(product.price), product.unit, product.stockStatus, String(product.moq), String(product.stockQty ?? ""), String(product.weightKg)])];
   } else if (kind === "orders") {
     if (!canManageOrders(session.role)) return new NextResponse("Forbidden", { status: 403 });
     const orders = await prisma.order.findMany({

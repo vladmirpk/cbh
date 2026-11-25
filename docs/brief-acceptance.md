@@ -18,7 +18,7 @@ CBH has a **live digital sales, marketing, quotation, lead, credit-flag, and ord
 | --- | --- | --- |
 | Corporate website (home, about, contact) | Delivered | Live on the public site |
 | Product catalogue + categories | Delivered | Categories index + admin CRUD |
-| Product pages (photos, specs, price, MOQ, status, brand, tags, install) | Delivered | Stock rules gate quote/cart |
+| Product pages (photos, specs, price, MOQ, status, brand, colour/size, use case, features, tags, install) | Delivered | Halsteds-grade attributes; stock rules gate quote/cart — see `docs/catalogue-attributes.md` |
 | Upcoming products + register interest | Delivered | Captures contact + quantity |
 | Product launch pages | Delivered | Limited to upcoming / pre-order stock |
 | Advertising / promotions | Delivered | Audience + target area; desk campaign signals |

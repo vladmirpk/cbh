@@ -22,11 +22,10 @@ export default async function QuotePage({
     orderBy: { name: "asc" },
   });
   return (
-    <div className="wrap py-12">
-      <p className="text-xs uppercase tracking-[0.18em] text-stone">Quotation</p>
-      <h1 className="display mt-2 max-w-3xl text-5xl leading-none">Get a quote</h1>
-      <p className="mt-3 max-w-xl text-stone">Add products, pick the suburb, submit.</p>
-      <div className="mt-8">
+    <div className="wrap py-8 sm:py-10">
+      <h1 className="display text-4xl text-ink sm:text-5xl">Get a quote</h1>
+      <p className="mt-2 max-w-xl text-sm text-stone">Add products, set quantities, pick delivery, submit.</p>
+      <div className="mt-6">
         <QuoteWizard
           products={products.map((product) => ({
             id: product.id,

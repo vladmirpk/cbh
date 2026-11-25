@@ -56,10 +56,15 @@ export async function saveProduct(_prev: FormState, formData: FormData): Promise
       return { label: label.trim(), value: rest.join("|").trim() };
     })
     .filter((spec) => spec.label && spec.value);
+  const features = str(formData, "featuresText")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
   const images = str(formData, "imagesText")
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.startsWith("http") || line.startsWith("/"));
+  const leadDaysRaw = str(formData, "leadTimeDays");
   const data = {
     name,
     sku,
@@ -74,6 +79,17 @@ export async function saveProduct(_prev: FormState, formData: FormData): Promise
     stockQty: str(formData, "stockQty") ? Math.round(num(formData, "stockQty")) : null,
     deliveryNotes: str(formData, "deliveryNotes") || null,
     brand: str(formData, "brand") || null,
+    modelNumber: str(formData, "modelNumber") || null,
+    barcode: str(formData, "barcode") || null,
+    colour: str(formData, "colour") || null,
+    sizeLabel: str(formData, "sizeLabel") || null,
+    packSize: str(formData, "packSize") || null,
+    leadTimeDays: leadDaysRaw && Number.isFinite(num(formData, "leadTimeDays"))
+      ? Math.round(num(formData, "leadTimeDays"))
+      : null,
+    leadTimeNote: str(formData, "leadTimeNote") || null,
+    useCase: str(formData, "useCase") || null,
+    features: JSON.stringify(features),
     tags: str(formData, "tags"),
     images: JSON.stringify(images),
     specs: JSON.stringify(specs),

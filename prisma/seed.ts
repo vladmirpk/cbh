@@ -331,6 +331,35 @@ function product(
     const [value, label] = line.split("|");
     return { label, value };
   });
+  const byLabel = (label: string) => parsed.find((spec) => spec.label?.toLowerCase() === label.toLowerCase())?.value ?? null;
+  const colour = byLabel("Colour") || byLabel("Finish");
+  const sizeLabel =
+    byLabel("Size") ||
+    byLabel("Thickness") ||
+    byLabel("Length") ||
+    byLabel("Pack") ||
+    byLabel("Power") ||
+    byLabel("Rating") ||
+    byLabel("Capacity");
+  const packSize = byLabel("Pack");
+  const features = [
+    colour ? `Finish / colour: ${colour}` : null,
+    sizeLabel ? `Sized at ${sizeLabel}` : null,
+    stockStatus === "promotional" ? "Currently on a yard promotion" : null,
+    categorySlug === "solar-energy" ? "Part of the CBH Solar & Energy range" : null,
+    "Quoted with delivery from the Workington yard",
+  ].filter(Boolean) as string[];
+  const useCase =
+    categorySlug === "bricks"
+      ? "Used for walls, boundary work and infill. Quote by brick count so a full load is easy to price with delivery."
+      : categorySlug === "pavers"
+        ? "Laid for driveways, yards and walkways. Choose thickness for domestic cars or truck traffic."
+        : categorySlug === "solar-energy"
+          ? "Specified for homes, farms and small businesses that want solar, backup or a full system — register interest or pre-order before stock lands."
+          : categorySlug === "lighting"
+            ? "Outdoor and site lighting for yards, gates and security coverage."
+            : "Building materials and finishes supplied from the CBH yard with a provisional delivery quote.";
+  const onOrder = stockStatus === "pre_order" || stockStatus === "coming_soon";
   return {
     name, slug, sku, categorySlug, description, unit, price, promoPrice, moq, stockStatus, weightKg, featured, tags,
     specs: JSON.stringify(parsed),
@@ -341,6 +370,20 @@ function product(
     launchDate: launchDate ?? (stockStatus === "coming_soon" ? "2027-01-15" : null),
     installRequired: categorySlug === "solar-energy",
     active: true,
+    brand: "CBH",
+    modelNumber: sku,
+    colour,
+    sizeLabel,
+    packSize,
+    stockQty: onOrder ? null : stockStatus === "promotional" ? 1200 : 5000,
+    leadTimeDays: stockStatus === "pre_order" ? 14 : stockStatus === "coming_soon" ? 45 : null,
+    leadTimeNote: stockStatus === "pre_order"
+      ? "Pre-order · confirm lead time with sales"
+      : stockStatus === "coming_soon"
+        ? "Coming soon · register interest"
+        : null,
+    useCase,
+    features: JSON.stringify(features),
     warranty: categorySlug === "solar-energy" ? "Manufacturer warranty, confirmed at launch" : null,
     deliveryNotes: weightKg > 20 ? "Heavy unit. The quote selects a truck from the weight." : "Included in the provisional delivery calculation.",
   };

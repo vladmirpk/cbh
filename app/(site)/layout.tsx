@@ -25,7 +25,11 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         phone={phone}
         email={email}
         address={address}
-        categories={categories.map((category) => ({ href: `/categories/${category.slug}`, label: category.name }))}
+        categories={categories.map((category) => ({
+          href: `/categories/${category.slug}`,
+          label: category.name,
+          image: category.image,
+        }))}
         user={session ? { name: session.name, role: session.role } : null}
       />
       <main id="content" className="bg-plaster pb-24 md:pb-0">{children}</main>
