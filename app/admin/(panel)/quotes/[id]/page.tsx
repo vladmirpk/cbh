@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { canManageLeads, canManageOrders } from "@/lib/roles";
 import { Denied } from "@/components/ui";
 import { SmartForm } from "@/components/SmartForm";
-import { convertQuoteToOrder, updateQuote } from "@/lib/actions/admin";
+import { convertQuoteToOrder, markQuoteFormal, updateQuote } from "@/lib/actions/admin";
 import { formatDate, formatQty, money, waLink } from "@/lib/format";
 import { quoteLinesFrom } from "@/lib/types";
 
@@ -24,7 +24,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
   return (
     <div className="grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
       <div>
-        <p className="text-xs uppercase tracking-[0.16em] text-stone">Quotation · {formatDate(quote.createdAt)}</p>
+        <p className="text-xs uppercase tracking-[0.16em] text-stone">{quote.kind} quotation · {formatDate(quote.createdAt)}</p>
         <h1 className="display mt-2 text-4xl">{quote.number}</h1>
         <p className="mt-2 text-sm text-stone">
           {quote.customerName} · {quote.location} · valid {quote.validDays} days
@@ -101,10 +101,18 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
+        {quote.kind !== "formal" ? (
+          <form action={markQuoteFormal} className="panel p-4">
+            <h2 className="display text-2xl">Mark as formal</h2>
+            <p className="mt-2 text-sm text-stone">Locks this figure as the formal quotation for the lead.</p>
+            <input type="hidden" name="id" value={quote.id} />
+            <button className="btn btn-ink mt-3" type="submit">Mark formal</button>
+          </form>
+        ) : null}
         {canManageOrders(user.role) && !linkedOrder ? (
           <form action={convertQuoteToOrder} className="panel p-4">
             <h2 className="display text-2xl">Convert to order</h2>
-            <p className="mt-2 text-sm text-stone">Creates a confirmed order from this quotation so dispatch can intervene.</p>
+            <p className="mt-2 text-sm text-stone">Creates a confirmed order for dispatch.</p>
             <input type="hidden" name="id" value={quote.id} />
             <label className="mt-3 block"><span className="label">Handover notes</span><input className="field" name="notes" placeholder="Payment terms, site access…" /></label>
             <button className="btn btn-primary mt-3" type="submit">Create order</button>

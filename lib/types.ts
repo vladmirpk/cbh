@@ -100,6 +100,30 @@ export function unitPrice(product: { price: number; promoPrice: number | null; s
   return product.price;
 }
 
+/** Statuses that may enter a priced quote basket. */
+export const QUOTABLE_STATUSES = ["available", "promotional", "pre_order"] as const;
+
+export function canQuoteStatus(stockStatus: string) {
+  return (QUOTABLE_STATUSES as readonly string[]).includes(stockStatus);
+}
+
+export function availabilitySchema(stockStatus: string) {
+  if (stockStatus === "out_of_stock" || stockStatus === "unavailable" || stockStatus === "discontinued") {
+    return "https://schema.org/OutOfStock";
+  }
+  if (stockStatus === "pre_order" || stockStatus === "coming_soon") {
+    return "https://schema.org/PreOrder";
+  }
+  return "https://schema.org/InStock";
+}
+
+export const CREDIT_STATUSES = [
+  { id: "none", label: "None" },
+  { id: "requested", label: "Requested" },
+  { id: "approved", label: "Approved" },
+  { id: "suspended", label: "Suspended" },
+] as const;
+
 export function parseJson<T>(value: string | null | undefined, fallback: T): T {
   if (!value) return fallback;
   try {

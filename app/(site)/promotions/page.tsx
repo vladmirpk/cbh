@@ -21,7 +21,11 @@ export default async function PromotionsPage() {
               {item.discount ? <p className="text-xs uppercase tracking-[0.16em] text-brick">{item.discount}</p> : null}
               <h2 className="display mt-2 text-3xl">{item.headline}</h2>
               <p className="mt-2 text-sm text-stone">{item.description}</p>
-              {item.targetArea ? <p className="mt-2 text-xs text-stone">Aimed at {item.targetArea}</p> : null}
+              {(item.audience || item.targetArea) ? (
+                <p className="mt-2 text-xs text-stone">
+                  {[item.audience, item.targetArea].filter(Boolean).join(" · ")}
+                </p>
+              ) : null}
             </div>
           </Link>
         ))}

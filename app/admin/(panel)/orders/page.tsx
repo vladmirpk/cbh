@@ -2,22 +2,24 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { canManageOrders } from "@/lib/roles";
+import { orderScope } from "@/lib/scope";
 import { Denied } from "@/components/ui";
 import { formatDate, money } from "@/lib/format";
 
 export default async function OrdersPage() {
   const user = await requireUser();
   if (!canManageOrders(user.role)) return <Denied />;
-  const orders = await prisma.order.findMany({ orderBy: { createdAt: "desc" } });
+  const orders = await prisma.order.findMany({
+    where: orderScope({ id: user.id, role: user.role }),
+    orderBy: { createdAt: "desc" },
+  });
   return (
     <div>
       <div className="flex items-center justify-between">
         <h1 className="display text-4xl">Orders</h1>
         <Link className="text-sm" href="/api/export/orders">Download CSV</Link>
       </div>
-      <p className="mt-2 text-sm text-stone">
-        Requested → confirmed → loading → dispatched → in transit → delivered. Open an order to print, edit totals or intervene on fleet and payment.
-      </p>
+      <p className="mt-2 text-sm text-stone">Open an order to print, edit, or update payment.</p>
       <div className="mt-6 overflow-x-auto">
         <table className="w-full min-w-[720px] text-sm">
           <thead className="text-left text-stone">
@@ -42,7 +44,7 @@ export default async function OrdersPage() {
                 </td>
                 <td>{money(order.total)}</td>
                 <td className="capitalize">{order.status.replace(/_/g, " ")}</td>
-                <td className="capitalize">{order.paymentStatus}</td>
+                <td className="capitalize">{order.paymentStatus}{order.paymentMethod ? ` · ${order.paymentMethod}` : ""}</td>
               </tr>
             ))}
           </tbody>

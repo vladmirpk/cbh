@@ -15,7 +15,8 @@ import {
   canManageTeam,
   canSeeAllLeads,
 } from "../roles";
-import { LEAD_STATUSES, ORDER_STATUSES, PRODUCT_STATUSES, ROLES, type FormState, num, slugify, str } from "../types";
+import { sendMail } from "../mail";
+import { CREDIT_STATUSES, LEAD_STATUSES, ORDER_STATUSES, PRODUCT_STATUSES, ROLES, type FormState, num, slugify, str } from "../types";
 
 function ok(path: string): never {
   revalidatePath(path);
@@ -72,6 +73,7 @@ export async function saveProduct(_prev: FormState, formData: FormData): Promise
     stockStatus,
     stockQty: str(formData, "stockQty") ? Math.round(num(formData, "stockQty")) : null,
     deliveryNotes: str(formData, "deliveryNotes") || null,
+    brand: str(formData, "brand") || null,
     tags: str(formData, "tags"),
     images: JSON.stringify(images),
     specs: JSON.stringify(specs),
@@ -452,6 +454,8 @@ export async function saveSettings(_prev: FormState, formData: FormData): Promis
       about: str(formData, "about"),
       validityDays: Math.max(1, Math.round(num(formData, "validityDays") || 7)),
       disclaimer: str(formData, "disclaimer"),
+      bankDetails: str(formData, "bankDetails") || null,
+      paynowId: str(formData, "paynowId") || null,
     },
   });
   await audit("update", "settings", "default", "site", user.email);
@@ -524,6 +528,10 @@ export async function updateLeadContact(_prev: FormState, formData: FormData): P
       registration: str(formData, "registration") || null,
       monthlyVolume: str(formData, "monthlyVolume") || null,
       creditRequest: str(formData, "creditRequest") || null,
+      creditLimit: str(formData, "creditLimit") ? num(formData, "creditLimit") : null,
+      creditStatus: CREDIT_STATUSES.some((item) => item.id === str(formData, "creditStatus"))
+        ? str(formData, "creditStatus")
+        : lead.creditStatus || "none",
       productName: str(formData, "productName") || lead.productName,
       quantity: str(formData, "quantity") ? num(formData, "quantity") : lead.quantity,
       requirements: str(formData, "requirements") || null,
@@ -754,6 +762,47 @@ export async function deactivateUser(formData: FormData) {
   const person = await prisma.user.update({ where: { id }, data: { active: false } });
   await audit("deactivate", "user", person.email, undefined, actor.email);
   redirect("/admin/team");
+}
+
+export async function markQuoteFormal(formData: FormData) {
+  const user = await requireUser();
+  if (!canManageLeads(user.role)) return;
+  const id = str(formData, "id");
+  const quote = await prisma.quote.update({ where: { id }, data: { kind: "formal" } });
+  if (quote.leadId) {
+    await prisma.lead.update({ where: { id: quote.leadId }, data: { status: "quoted", quoteValue: quote.total } });
+  }
+  if (quote.email) {
+    const quoteUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ""}/q/${quote.publicToken}`;
+    await sendMail(
+      quote.email,
+      `CBH formal quotation ${quote.number}`,
+      `Hello ${quote.customerName},\n\nYour formal quotation ${quote.number} totals ${moneyTotal(quote.total)}.\nOpen it here: ${quoteUrl}\n\nCBH`,
+    );
+  }
+  await audit("formalise", "quote", quote.number, undefined, user.email);
+  revalidatePath(`/admin/quotes/${id}`);
+  redirect(`/admin/quotes/${id}`);
+}
+
+export async function confirmOrderPayment(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  if (!canManageOrders(user.role)) return { error: "Your role cannot update payments." };
+  const id = str(formData, "id");
+  const paymentStatus = str(formData, "paymentStatus") || "paid";
+  const order = await prisma.order.update({
+    where: { id },
+    data: {
+      paymentStatus,
+      paymentRef: str(formData, "paymentRef") || undefined,
+      paymentMethod: str(formData, "paymentMethod") || undefined,
+      paidAt: paymentStatus === "paid" ? new Date() : null,
+    },
+  });
+  await audit("payment", "order", order.number, paymentStatus, user.email);
+  revalidatePath(`/admin/orders/${id}`);
+  revalidatePath("/admin/orders");
+  return { success: "Payment updated." };
 }
 
 function moneyTotal(value: number) {

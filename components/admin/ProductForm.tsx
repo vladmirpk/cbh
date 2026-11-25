@@ -17,6 +17,7 @@ type ProductInput = {
   stockStatus: string;
   stockQty: number | null;
   deliveryNotes: string | null;
+  brand: string | null;
   tags: string;
   images: string;
   specs: string;
@@ -64,6 +65,7 @@ export function ProductForm({
           </label>
           <label><span className="label">Unit</span><input className="field" name="unit" defaultValue={product?.unit ?? "each"} required /></label>
           <label><span className="label">Minimum order</span><input className="field" name="moq" defaultValue={product?.moq ?? 1} /></label>
+          <label><span className="label">Brand</span><input className="field" name="brand" defaultValue={product?.brand ?? ""} placeholder="CBH" /></label>
         </div>
         <label><span className="label">Description</span><textarea className="field min-h-28" name="description" defaultValue={product?.description} required /></label>
       </section>

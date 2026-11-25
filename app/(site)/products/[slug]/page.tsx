@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCommerce } from "@/lib/queries";
 import { formatQty, money, waLink } from "@/lib/format";
-import { parseJson, type Spec, unitPrice } from "@/lib/types";
+import { availabilitySchema, canQuoteStatus, parseJson, type Spec, unitPrice } from "@/lib/types";
 import { StatusPill } from "@/components/ui";
 import { SmartForm } from "@/components/SmartForm";
 import { sendEnquiry } from "@/lib/actions/public";
@@ -49,7 +49,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <div>
           <StatusPill status={product.stockStatus} />
           <h1 className="display mt-3 text-5xl leading-none">{product.name}</h1>
-          <p className="mt-2 text-sm text-stone">{product.sku} · sold per {product.unit} · minimum {formatQty(product.moq)}</p>
+          <p className="mt-2 text-sm text-stone">
+            {product.sku}
+            {product.brand ? ` · ${product.brand}` : ""}
+            {" · "}sold per {product.unit}
+            {" · "}minimum {formatQty(product.moq)}
+            {product.stockQty != null ? ` · ${formatQty(product.stockQty)} in yard` : ""}
+          </p>
           <p className="mt-5 text-3xl font-semibold">
             {product.stockStatus === "promotional" && product.promoPrice != null ? (
               <span className="mr-2 text-lg font-normal text-stone line-through">{money(product.price)}</span>
@@ -60,9 +66,19 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <p className="mt-5 leading-relaxed text-stone">{product.description}</p>
           {product.deliveryNotes ? <p className="mt-3 text-sm">{product.deliveryNotes}</p> : null}
           {product.warranty ? <p className="mt-2 text-sm">Warranty: {product.warranty}</p> : null}
+          {product.installRequired ? <p className="mt-2 text-sm font-semibold text-ink">Installation required</p> : null}
+          {product.tags ? (
+            <p className="mt-2 flex flex-wrap gap-2 text-xs">
+              {product.tags.split(/[, ]+/).filter(Boolean).map((tag) => (
+                <Link key={tag} href={`/products?tag=${encodeURIComponent(tag)}`} className="rounded-full border border-line px-2 py-1 text-stone">{tag}</Link>
+              ))}
+            </p>
+          ) : null}
           <div className="mt-6 flex flex-wrap gap-2">
-            <Link href={`/quote?product=${product.slug}`} className="btn btn-primary">Provisional quote</Link>
-            <AddToCart slug={product.slug} name={product.name} image={images[0]} />
+            {canQuoteStatus(product.stockStatus) ? (
+              <Link href={`/quote?product=${product.slug}`} className="btn btn-primary">Provisional quote</Link>
+            ) : null}
+            {canQuoteStatus(product.stockStatus) ? <AddToCart slug={product.slug} name={product.name} image={images[0]} /> : null}
             <a href={wa} className="btn btn-ink" target="_blank" rel="noreferrer">Ask on WhatsApp</a>
             {launchable ? <Link href={`/launch/${product.slug}`} className="btn btn-ghost">Launch page</Link> : null}
           </div>
@@ -135,7 +151,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               "@type": "Offer",
               priceCurrency: "USD",
               price: price,
-              availability: product.stockStatus === "out_of_stock" ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+              availability: availabilitySchema(product.stockStatus),
             },
           }),
         }}

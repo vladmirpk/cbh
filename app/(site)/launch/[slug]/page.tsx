@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function LaunchPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = await prisma.product.findUnique({ where: { slug }, include: { category: true } });
-  if (!product || !product.active) notFound();
+  if (!product || !product.active || !["coming_soon", "pre_order"].includes(product.stockStatus)) notFound();
   const { site } = await getCommerce();
   const image = parseJson<string[]>(product.images, [])[0];
   const specs = parseJson<Spec[]>(product.specs, []);

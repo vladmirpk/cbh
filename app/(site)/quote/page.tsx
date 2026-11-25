@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { getCommerce, ratesFrom } from "@/lib/queries";
-import { parseJson } from "@/lib/types";
+import { QUOTABLE_STATUSES, parseJson } from "@/lib/types";
 import { QuoteWizard } from "@/components/site/QuoteWizard";
 
 export const metadata: Metadata = {
@@ -17,7 +17,7 @@ export default async function QuotePage({
   const sp = await searchParams;
   const { settings, vehicles, zones } = await getCommerce();
   const products = await prisma.product.findMany({
-    where: { active: true, stockStatus: { not: "discontinued" } },
+    where: { active: true, stockStatus: { in: [...QUOTABLE_STATUSES] } },
     include: { category: true },
     orderBy: { name: "asc" },
   });

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
-import { canManageLeads, canSeeAllLeads } from "@/lib/roles";
+import { canManageLeads } from "@/lib/roles";
+import { leadScope } from "@/lib/scope";
 import { Denied } from "@/components/ui";
 import { LeadBoard } from "@/components/admin/LeadBoard";
 
@@ -9,7 +10,7 @@ export default async function LeadsPage() {
   const user = await requireUser();
   if (!canManageLeads(user.role)) return <Denied />;
   const leads = await prisma.lead.findMany({
-    where: canSeeAllLeads(user.role) ? {} : { OR: [{ assignedToId: user.id }, { assignedToId: null }] },
+    where: leadScope({ id: user.id, role: user.role }),
     orderBy: { createdAt: "desc" },
   });
   const followUps = leads.filter((lead) => lead.followUpDate && lead.status !== "won" && lead.status !== "lost");

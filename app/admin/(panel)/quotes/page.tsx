@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { canManageLeads } from "@/lib/roles";
+import { quoteScope } from "@/lib/scope";
 import { Denied } from "@/components/ui";
 import { formatDate, money } from "@/lib/format";
 
@@ -9,6 +10,7 @@ export default async function QuotesPage() {
   const user = await requireUser();
   if (!canManageLeads(user.role)) return <Denied />;
   const quotes = await prisma.quote.findMany({
+    where: quoteScope({ id: user.id, role: user.role }),
     orderBy: { createdAt: "desc" },
     include: { lead: true, orders: { select: { id: true, number: true } } },
   });
@@ -25,6 +27,7 @@ export default async function QuotesPage() {
               <th className="py-2">Quote</th>
               <th>Customer</th>
               <th>Total</th>
+              <th>Kind</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -40,6 +43,7 @@ export default async function QuotesPage() {
                   <p className="text-stone">{quote.location}</p>
                 </td>
                 <td>{money(quote.total)}</td>
+                <td className="capitalize">{quote.kind}</td>
                 <td>
                   {quote.orders[0] ? (
                     <Link href={`/admin/orders/${quote.orders[0].id}`}>{quote.orders[0].number}</Link>

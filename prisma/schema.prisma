@@ -48,6 +48,7 @@ model Product {
   stockQty        Int?
   weightKg        Float    @default(1)
   deliveryNotes   String?
+  brand           String?
   tags            String   @default("")
   images          String   @default("[]")
   relatedSlugs    String   @default("")
@@ -79,6 +80,8 @@ model Lead {
   registration  String?
   monthlyVolume String?
   creditRequest String?
+  creditLimit   Float?
+  creditStatus  String     @default("none")
   productId     String?
   product       Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
   productName   String?
@@ -139,6 +142,7 @@ model Quote {
   total          Float
   items          String   @default("[]")
   validDays      Int      @default(7)
+  kind           String   @default("provisional")
   breakdown      String
   disclaimer     String
   createdAt      DateTime @default(now())
@@ -160,6 +164,9 @@ model Order {
   total         Float
   status        String   @default("requested")
   paymentStatus String   @default("unpaid")
+  paymentRef    String?
+  paymentMethod String?
+  paidAt        DateTime?
   vehicle       String?
   driver        String?
   deliveryDate  String?
@@ -255,15 +262,17 @@ model DeliverySettings {
 }
 
 model SiteSetting {
-  id           String @id @default("default")
+  id           String  @id @default("default")
   phone        String
   whatsapp     String
   email        String
   address      String
   hours        String
   about        String
-  validityDays Int    @default(7)
+  validityDays Int     @default(7)
   disclaimer   String
+  bankDetails  String?
+  paynowId     String?
 }
 
 model Notification {

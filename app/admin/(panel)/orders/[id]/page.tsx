@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { canManageOrders } from "@/lib/roles";
 import { Denied } from "@/components/ui";
 import { SmartForm } from "@/components/SmartForm";
-import { updateOrderRecord } from "@/lib/actions/admin";
+import { confirmOrderPayment, updateOrderRecord } from "@/lib/actions/admin";
 import { formatDate, formatQty, money, waLink } from "@/lib/format";
 import { ORDER_STATUSES, parseJson } from "@/lib/types";
 
@@ -86,6 +86,23 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </p>
       </div>
 
+      <div className="panel p-4">
+        <h2 className="display text-2xl">Payment</h2>
+        <div className="mt-3">
+          <SmartForm action={confirmOrderPayment} submit="Save payment" className="grid gap-3">
+            <input type="hidden" name="id" value={order.id} />
+            <label><span className="label">Payment status</span>
+              <select className="field" name="paymentStatus" defaultValue={order.paymentStatus}>
+                <option value="unpaid">Unpaid</option>
+                <option value="pending">Pending</option>
+                <option value="paid">Paid</option>
+              </select>
+            </label>
+            <label><span className="label">Method</span><input className="field" name="paymentMethod" defaultValue={order.paymentMethod ?? ""} placeholder="bank / credit / cash" /></label>
+            <label><span className="label">Reference</span><input className="field" name="paymentRef" defaultValue={order.paymentRef ?? ""} /></label>
+          </SmartForm>
+        </div>
+      </div>
       <div className="panel p-4">
         <h2 className="display text-2xl">Intervene</h2>
         <p className="mt-2 text-sm text-stone">Change status, payment, fleet, totals or notes without leaving the desk.</p>

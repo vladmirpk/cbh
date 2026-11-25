@@ -24,6 +24,8 @@ export default async function SettingsPage() {
           <label><span className="label">About</span><textarea className="field min-h-36" name="about" defaultValue={site.about} /></label>
           <label><span className="label">Quote validity (days)</span><input className="field" name="validityDays" defaultValue={site.validityDays} /></label>
           <label><span className="label">Disclaimer</span><textarea className="field min-h-28" name="disclaimer" defaultValue={site.disclaimer} /></label>
+          <label><span className="label">Bank payment details</span><textarea className="field min-h-24" name="bankDetails" defaultValue={site.bankDetails ?? ""} placeholder="Bank, account name, account number" /></label>
+          <label><span className="label">Paynow / gateway merchant ID</span><input className="field" name="paynowId" defaultValue={site.paynowId ?? ""} placeholder="Optional" /></label>
         </SmartForm>
       </div>
     </div>

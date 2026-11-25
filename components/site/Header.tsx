@@ -45,16 +45,20 @@ export function Header({
   }, []);
 
   const menus: Group[] = [
-    { label: "Products", href: "/products", items: categories },
+    {
+      label: "Products",
+      href: "/products",
+      items: [{ href: "/categories", label: "All categories" }, ...categories],
+    },
     {
       label: "Services",
       href: "/services",
       items: [
         { href: "/services", label: "All services" },
-        { href: "/delivery", label: "Bulk orders & deliveries" },
-        { href: "/projects", label: "Construction support" },
-        { href: "/contact", label: "Professional advice" },
-        { href: "/quote", label: "Project supply solutions" },
+        { href: "/delivery", label: "Delivery rates" },
+        { href: "/solar-configurator", label: "Solar configurator" },
+        { href: "/quote", label: "Request a quote" },
+        { href: "/contact", label: "Contact" },
       ],
     },
     {
@@ -63,6 +67,7 @@ export function Header({
       items: [
         { href: "/about", label: "About CBH" },
         { href: "/projects", label: "Projects" },
+        { href: "/promotions", label: "Promotions" },
         { href: "/blog", label: "News" },
         { href: "/upcoming", label: "Upcoming products" },
       ],
@@ -78,7 +83,7 @@ export function Header({
       items: [
         { href: "/quote", label: "Request a quote" },
         { href: "/cart", label: "Cart" },
-        { href: "/account", label: "My orders" },
+        { href: "/account", label: "My account" },
       ],
     },
   ];

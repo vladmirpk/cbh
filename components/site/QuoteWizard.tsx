@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import { createQuote } from "@/lib/actions/public";
 import { calculateDelivery, type RateCard, type VehicleRate } from "@/lib/delivery";
 import { formatQty, money } from "@/lib/format";
-import { unitPrice } from "@/lib/types";
+import { canQuoteStatus, unitPrice } from "@/lib/types";
 import { ConfirmSheet, type ConfirmPayload } from "./ConfirmSheet";
 import { Cover } from "./Cover";
 import { ZonePicker, type LocationChoice, type ZoneOption } from "./ZonePicker";
@@ -128,6 +128,7 @@ export function QuoteWizard({
   }
 
   const filtered = products.filter((item) => {
+    if (!canQuoteStatus(item.stockStatus)) return false;
     const hay = `${item.name} ${item.sku} ${item.category}`.toLowerCase();
     return hay.includes(query.toLowerCase());
   });

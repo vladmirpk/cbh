@@ -7,7 +7,7 @@ import { Denied } from "@/components/ui";
 import { SmartForm } from "@/components/SmartForm";
 import { updateLeadContact } from "@/lib/actions/admin";
 import { formatDate, money } from "@/lib/format";
-import { LEAD_SOURCES } from "@/lib/types";
+import { CREDIT_STATUSES, LEAD_SOURCES } from "@/lib/types";
 
 export default async function CustomerRecordPage({ params }: { params: Promise<{ key: string }> }) {
   const user = await requireUser();
@@ -36,8 +36,9 @@ export default async function CustomerRecordPage({ params }: { params: Promise<{
         <p className="mt-2 text-sm text-stone">
           {primary.phone} · {primary.location} · {matches.length} enquir{matches.length === 1 ? "y" : "ies"}
         </p>
-        <dl className="mt-6 grid gap-3 rounded-2xl border border-line bg-card p-4 text-sm sm:grid-cols-3">
+        <dl className="mt-6 grid gap-3 rounded-2xl border border-line bg-card p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div><dt className="text-stone">Account</dt><dd className="capitalize font-semibold">{primary.customerType}{primary.company ? ` · ${primary.company}` : ""}</dd></div>
+          <div><dt className="text-stone">Credit</dt><dd className="font-semibold capitalize">{primary.creditStatus}{primary.creditLimit != null ? ` · ${money(primary.creditLimit)}` : ""}</dd></div>
           <div><dt className="text-stone">Quoted</dt><dd className="font-semibold">{money(quoteTotal)}</dd></div>
           <div><dt className="text-stone">Ordered</dt><dd className="font-semibold">{money(orderTotal)}</dd></div>
         </dl>
@@ -105,6 +106,13 @@ export default async function CustomerRecordPage({ params }: { params: Promise<{
             <label><span className="label">Registration</span><input className="field" name="registration" defaultValue={primary.registration ?? ""} /></label>
             <label><span className="label">Monthly volume</span><input className="field" name="monthlyVolume" defaultValue={primary.monthlyVolume ?? ""} /></label>
             <label><span className="label">Credit request</span><input className="field" name="creditRequest" defaultValue={primary.creditRequest ?? ""} /></label>
+            <label>
+              <span className="label">Credit status</span>
+              <select className="field" name="creditStatus" defaultValue={primary.creditStatus || "none"}>
+                {CREDIT_STATUSES.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
+              </select>
+            </label>
+            <label><span className="label">Credit limit (US$)</span><input className="field" name="creditLimit" defaultValue={primary.creditLimit ?? ""} /></label>
             <label><span className="label">Product interest</span><input className="field" name="productName" defaultValue={primary.productName ?? ""} /></label>
             <label><span className="label">Quantity</span><input className="field" name="quantity" defaultValue={primary.quantity ?? ""} /></label>
             <label>

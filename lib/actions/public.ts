@@ -9,7 +9,9 @@ import { ratesFrom } from "../queries";
 import { notify, audit } from "../notify";
 import { rateLimit } from "../rate-limit";
 import { formatQty, money } from "../format";
-import { LEAD_SOURCES, type FormState, num, str, unitPrice } from "../types";
+import { sendMail } from "../mail";
+import { sendWhatsAppMessage } from "../whatsapp";
+import { LEAD_SOURCES, canQuoteStatus, type FormState, num, str, unitPrice } from "../types";
 
 async function guard(bucket: string) {
   const headerList = await headers();
@@ -84,7 +86,12 @@ export async function createQuote(_prev: FormState, formData: FormData): Promise
   for (const request of requested) {
     const product = byId.get(request.productId);
     if (!product) return { error: "One of the products is no longer available." };
-    if (product.stockStatus === "discontinued") return { error: `${product.name} has been discontinued.` };
+    if (!canQuoteStatus(product.stockStatus)) {
+      return { error: `${product.name} cannot be quoted while marked ${product.stockStatus.replace(/_/g, " ")}.` };
+    }
+    if (product.stockQty != null && request.quantity > product.stockQty) {
+      return { error: `${product.name} only has ${product.stockQty} ${product.unit} available.` };
+    }
     if (request.quantity < product.moq) {
       return { error: `Minimum order for ${product.name} is ${product.moq} ${product.unit}.` };
     }
@@ -201,6 +208,18 @@ export async function createQuote(_prev: FormState, formData: FormData): Promise
     `/admin/leads/${lead.id}`,
   );
   await audit("create", "quote", number, `${name} · ${summaryName}`, name);
+  const quoteUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ""}/q/${publicToken}`;
+  if (email) {
+    await sendMail(
+      email,
+      `CBH quote ${number}`,
+      `Hello ${name},\n\nYour provisional quotation ${number} totals ${money(total)}.\nOpen it here: ${quoteUrl}\n\nCBH`,
+    );
+  }
+  await sendWhatsAppMessage(
+    whatsapp,
+    `CBH quote ${number}: ${money(total)} provisional. Open ${quoteUrl}`,
+  );
   redirect(`/q/${publicToken}`);
 }
 
@@ -300,12 +319,46 @@ export async function requestOrder(_prev: FormState, formData: FormData): Promis
   const blocked = await guard("order");
   if (blocked) return { error: blocked };
   const token = str(formData, "token");
-  const quote = await prisma.quote.findUnique({ where: { publicToken: token } });
+  const paymentMethod = str(formData, "paymentMethod") || "arrange";
+  const quote = await prisma.quote.findUnique({
+    where: { publicToken: token },
+    include: { lead: true },
+  });
   if (!quote) return { error: "Quotation not found." };
   const existing = await prisma.order.findFirst({ where: { quoteId: quote.id } });
   if (existing) return { success: `Order ${existing.number} already sent.` };
+
+  if (quote.lead?.creditStatus === "suspended") {
+    return { error: "This account’s credit is suspended. Contact CBH sales." };
+  }
+  if (
+    quote.lead?.creditStatus === "approved" &&
+    quote.lead.creditLimit != null &&
+    quote.total > quote.lead.creditLimit &&
+    paymentMethod === "credit"
+  ) {
+    return { error: `Order exceeds the approved credit limit of ${money(quote.lead.creditLimit)}.` };
+  }
+
+  const lines = quote.items && quote.items !== "[]"
+    ? (JSON.parse(quote.items) as Array<{ productId?: string; quantity?: number; productName?: string; unit?: string }>)
+    : [];
+  for (const line of lines) {
+    if (!line.productId || !line.quantity) continue;
+    const product = await prisma.product.findUnique({ where: { id: line.productId } });
+    if (!product) continue;
+    if (!canQuoteStatus(product.stockStatus)) {
+      return { error: `${product.name} is not available to order.` };
+    }
+    if (product.stockQty != null && line.quantity > product.stockQty) {
+      return { error: `${product.name} only has ${product.stockQty} ${product.unit} left.` };
+    }
+  }
+
   const count = await prisma.order.count();
   const number = `ORD-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
+  const paymentRef = `PAY-${number}`;
+  const paidNow = paymentMethod === "credit" && quote.lead?.creditStatus === "approved";
   const order = await prisma.order.create({
     data: {
       number,
@@ -329,8 +382,27 @@ export async function requestOrder(_prev: FormState, formData: FormData): Promis
       total: quote.total,
       vehicle: JSON.parse(quote.breakdown).vehicle,
       status: "requested",
+      paymentMethod,
+      paymentRef,
+      paymentStatus: paidNow ? "paid" : paymentMethod === "bank" ? "pending" : "unpaid",
+      paidAt: paidNow ? new Date() : null,
     },
   });
+
+  for (const line of lines) {
+    if (!line.productId || !line.quantity) continue;
+    const product = await prisma.product.findUnique({ where: { id: line.productId } });
+    if (!product || product.stockQty == null) continue;
+    const nextQty = Math.max(0, product.stockQty - line.quantity);
+    await prisma.product.update({
+      where: { id: product.id },
+      data: {
+        stockQty: nextQty,
+        stockStatus: nextQty <= 0 && product.stockStatus === "available" ? "out_of_stock" : product.stockStatus,
+      },
+    });
+  }
+
   if (quote.leadId) {
     await prisma.lead.update({
       where: { id: quote.leadId },
@@ -340,11 +412,22 @@ export async function requestOrder(_prev: FormState, formData: FormData): Promis
       data: {
         leadId: quote.leadId,
         authorName: "Website",
-        body: `Customer requested order ${number} from quotation ${quote.number}.`,
+        body: `Customer requested order ${number} from quotation ${quote.number} (${paymentMethod}).`,
       },
     });
   }
-  await notify("Order requested", `${quote.customerName} wants to proceed with ${quote.number}.`, `/admin/orders`);
+  await notify("Order requested", `${quote.customerName} wants to proceed with ${quote.number}.`, `/admin/orders/${order.id}`);
   await audit("create", "order", order.id, number, quote.customerName);
+  if (quote.email) {
+    await sendMail(
+      quote.email,
+      `CBH order ${number}`,
+      `Hello ${quote.customerName},\n\nOrder ${number} is with CBH.\nPayment: ${paymentMethod}${paymentMethod === "bank" ? ` · reference ${paymentRef}` : ""}.\nTotal ${money(quote.total)}.\n\nCBH`,
+    );
+  }
+  if (paidNow) return { success: `Order ${number} sent on approved credit.` };
+  if (paymentMethod === "bank") {
+    return { success: `Order ${number} sent. Pay by bank using reference ${paymentRef}. Sales will confirm.` };
+  }
   return { success: `Order ${number} sent. Sales will confirm payment.` };
 }

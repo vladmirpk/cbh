@@ -35,7 +35,12 @@ Change those passwords, `AUTH_SECRET`, the WhatsApp number and the address in Se
 - CSV export of leads, quotes, products and orders
 - Roles, hashed passwords, audit log, in-app alerts, optional Resend email
 
-Customer logins, card payments, the solar configurator and a live WhatsApp Business API conversation are prepared for, and not switched on. Click-to-chat WhatsApp works now. Set `RESEND_API_KEY`, `NOTIFY_EMAIL` and `NOTIFY_FROM` for email alerts. Set `NEXT_PUBLIC_GA_ID` for Google Analytics and `NEXT_PUBLIC_GOOGLE_MAPS_KEY` for the pin map. Suburb quoting works without a maps key.
+Customer register/login exists but the account portal is thin (history matched by email). Card payments, the solar configurator and WhatsApp Business API messaging are not switched on. Click-to-chat WhatsApp works now. Set `RESEND_API_KEY`, `NOTIFY_EMAIL` and `NOTIFY_FROM` for email alerts. Set `NEXT_PUBLIC_GA_ID` for Google Analytics and `NEXT_PUBLIC_GOOGLE_MAPS_KEY` for the pin map. Suburb quoting works without a maps key.
+
+### Brief coverage (client sign-off)
+
+- [Phase acceptance & backlog](docs/brief-acceptance.md) — what Phase 1–2 deliver vs Phase 3–4 backlog  
+- [Next build priority](docs/next-build-priority.md) — recommended order if CBH has not ranked gaps yet
 
 ## Stack and hosting
 

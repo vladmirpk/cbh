@@ -7,7 +7,7 @@ import { Denied } from "@/components/ui";
 import { SmartForm } from "@/components/SmartForm";
 import { addNote, claimLead, updateLead, updateLeadContact } from "@/lib/actions/admin";
 import { formatDate, formatQty, money, waLink } from "@/lib/format";
-import { LEAD_SOURCES, LEAD_STATUSES } from "@/lib/types";
+import { CREDIT_STATUSES, LEAD_SOURCES, LEAD_STATUSES } from "@/lib/types";
 
 export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
@@ -57,6 +57,13 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
               <label><span className="label">Registration</span><input className="field" name="registration" defaultValue={lead.registration ?? ""} /></label>
               <label><span className="label">Monthly volume</span><input className="field" name="monthlyVolume" defaultValue={lead.monthlyVolume ?? ""} /></label>
               <label className="sm:col-span-2"><span className="label">Credit request</span><input className="field" name="creditRequest" defaultValue={lead.creditRequest ?? ""} /></label>
+              <label>
+                <span className="label">Credit status</span>
+                <select className="field" name="creditStatus" defaultValue={lead.creditStatus || "none"}>
+                  {CREDIT_STATUSES.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
+                </select>
+              </label>
+              <label><span className="label">Credit limit (US$)</span><input className="field" name="creditLimit" defaultValue={lead.creditLimit ?? ""} placeholder="e.g. 5000" /></label>
               <label><span className="label">Product interest</span><input className="field" name="productName" defaultValue={lead.productName ?? ""} /></label>
               <label><span className="label">Quantity</span><input className="field" name="quantity" defaultValue={lead.quantity ?? ""} /></label>
               <label><span className="label">Needed by</span><input className="field" name="requiredDate" defaultValue={lead.requiredDate ?? ""} /></label>
@@ -118,10 +125,18 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
           </SmartForm>
         </div>
         <div className="panel p-4 text-sm">
+          <p className="text-xs uppercase tracking-[0.14em] text-stone">Credit</p>
+          <p className="mt-1 capitalize font-semibold">
+            {lead.creditStatus || "none"}
+            {lead.creditLimit != null ? ` · ${money(lead.creditLimit)}` : ""}
+          </p>
+          {lead.creditRequest ? <p className="mt-1 text-stone">{lead.creditRequest}</p> : null}
+        </div>
+        <div className="panel p-4 text-sm">
           <h2 className="display text-2xl">Quotations & orders</h2>
           {lead.quotes.map((quote) => (
             <p key={quote.id} className="mt-2">
-              <Link href={`/admin/quotes/${quote.id}`}>{quote.number}</Link> · {money(quote.total)}
+              <Link href={`/admin/quotes/${quote.id}`}>{quote.number}</Link> · {quote.kind} · {money(quote.total)}
             </p>
           ))}
           {lead.orders.map((order) => (

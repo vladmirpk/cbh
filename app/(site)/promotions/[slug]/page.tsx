@@ -29,6 +29,11 @@ export default async function PromotionPage({ params }: { params: Promise<{ slug
           <h1 className="display mt-3 text-5xl leading-none">{promotion.headline}</h1>
           <p className="mt-4 text-lg text-white/85">{promotion.description}</p>
           {promotion.priceLabel ? <p className="mt-4 text-2xl">{promotion.priceLabel}</p> : null}
+          {(promotion.audience || promotion.targetArea) ? (
+            <p className="mt-3 text-sm text-white/75">
+              {[promotion.audience, promotion.targetArea ? `Aimed at ${promotion.targetArea}` : null].filter(Boolean).join(" · ")}
+            </p>
+          ) : null}
           <div className="mt-8 flex gap-2">
             <a className="btn btn-primary" href={href}>{ctaLabel(promotion.cta)}</a>
             <Link className="btn btn-ghost border-white/20" href="/products">Browse products</Link>
