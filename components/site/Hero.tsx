@@ -4,28 +4,29 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Cover } from "./Cover";
+import { CBH_HERO } from "@/lib/cbh-images";
 
 const slides = [
   {
-    image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1400&q=70",
+    image: CBH_HERO.bricks,
     title: ["Build Better", "Together"],
     copy: "Quality bricks, building materials and hardware for your home, business and infrastructure.",
     href: "/products",
     cta: "Explore Our Products",
   },
   {
-    image: "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1400&q=70",
-    title: ["Strong Foundations", "Last Longer"],
-    copy: "Common bricks, face bricks and the materials around them, quoted with delivery.",
-    href: "/categories/bricks",
-    cta: "Shop Bricks",
+    image: CBH_HERO.pavers,
+    title: ["Pavers & Pools", "Done Properly"],
+    copy: "Interlocking pavers, kerbs and pool edges — quoted with delivery to your suburb.",
+    href: "/categories/pavers",
+    cta: "Shop Pavers",
   },
   {
-    image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1400&q=70",
-    title: ["Delivered Across", "Zimbabwe"],
-    copy: "Price materials and delivery in one quote.",
-    href: "/quote",
-    cta: "Get a Quote",
+    image: CBH_HERO.solar,
+    title: ["Solar for", "Zimbabwe"],
+    copy: "Home systems, inverters and batteries joining the CBH yard. Register interest now.",
+    href: "/categories/solar-energy",
+    cta: "Explore Solar",
   },
 ];
 
@@ -41,7 +42,8 @@ export function Hero() {
       <div className="absolute inset-0">
         <Cover src={slide.image} alt="" priority />
       </div>
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,#082a78_0%,#0a3f9ee6_34%,#0a3f9e66_58%,transparent_78%)]" />
+      {/* Soft left wash — banners already carry navy overlays for type. */}
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,#071a4acc_0%,#08275f99_28%,#08275f33_52%,transparent_72%)]" />
       <div className="wrap relative flex min-h-[460px] items-center py-16 md:min-h-[520px]">
         <div className="max-w-xl">
           <h1 className="text-5xl font-extrabold leading-[0.95] tracking-tight md:text-7xl">

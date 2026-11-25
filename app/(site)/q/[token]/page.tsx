@@ -8,6 +8,7 @@ import type { DeliveryBreakdown } from "@/lib/delivery";
 import { getCommerce } from "@/lib/queries";
 import { SmartForm } from "@/components/SmartForm";
 import { Cover } from "@/components/site/Cover";
+import { Logo } from "@/components/site/Logo";
 import { requestOrder } from "@/lib/actions/public";
 
 export const metadata: Metadata = { title: "Your quotation" };
@@ -41,10 +42,13 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
   return (
     <div className="wrap py-12">
       <article className="mx-auto max-w-3xl rounded-[1.6rem] border border-line bg-card p-6 md:p-10">
-        <p className="text-xs uppercase tracking-[0.18em] text-brick">CBH {kindLabel.toLowerCase()}</p>
-        <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
-          <h1 className="display text-4xl">{quote.number}</h1>
-          <p className="text-sm text-stone">{formatDate(quote.createdAt)} · valid until {formatDate(addDays(quote.createdAt, quote.validDays))}</p>
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-5">
+          <Logo href="/" />
+          <div className="text-right">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brick">CBH {kindLabel.toLowerCase()}</p>
+            <h1 className="display mt-1 text-3xl text-ink md:text-4xl">{quote.number}</h1>
+            <p className="mt-1 text-sm text-stone">{formatDate(quote.createdAt)} · valid until {formatDate(addDays(quote.createdAt, quote.validDays))}</p>
+          </div>
         </div>
         <dl className="mt-6 grid gap-2 text-sm sm:grid-cols-2">
           <div><dt className="text-stone">Customer</dt><dd>{quote.customerName}</dd></div>

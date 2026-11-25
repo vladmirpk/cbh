@@ -2,6 +2,7 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf
 import { formatDate, addDays, money, formatQty } from "./format";
 import type { DeliveryBreakdown } from "./delivery";
 import { quoteLinesFrom, type QuoteLine } from "./types";
+import { drawLetterhead } from "./pdf-brand";
 
 export type PdfQuote = {
   number: string;
@@ -62,31 +63,8 @@ export async function buildQuotePdf(quote: PdfQuote, company: PdfCompany) {
   const page = pdf.addPage([595.28, 841.89]);
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const strong = await pdf.embedFont(StandardFonts.HelveticaBold);
-  page.drawRectangle({ x: 0, y: 770, width: 595, height: 72, color: rgb(0.11, 0.09, 0.07) });
-  page.drawRectangle({ x: 0, y: 766, width: 595, height: 4, color: rgb(0.76, 0.25, 0.05) });
-  page.drawText("CONSOLIDATED BRICKS & HARDWARE", {
-    x: 48,
-    y: 808,
-    size: 11,
-    font: strong,
-    color: rgb(0.96, 0.93, 0.89),
-  });
-  page.drawText("Provisional quotation", {
-    x: 48,
-    y: 786,
-    size: 18,
-    font: strong,
-    color: rgb(1, 1, 1),
-  });
-  page.drawText(quote.number, {
-    x: 430,
-    y: 800,
-    size: 12,
-    font: strong,
-    color: rgb(0.95, 0.72, 0.55),
-  });
-
-  let y = 730;
+  let y = await drawLetterhead(pdf, page, { regular: font, bold: strong }, "Provisional quotation", quote.number);
+  y -= 8;
   const meta = [
     `Date  ${formatDate(quote.createdAt)}`,
     `Valid until  ${formatDate(addDays(quote.createdAt, quote.validDays))}`,
@@ -191,24 +169,8 @@ export async function buildOrderPdf(order: PdfOrder, company: PdfCompany) {
   const page = pdf.addPage([595.28, 841.89]);
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const strong = await pdf.embedFont(StandardFonts.HelveticaBold);
-  page.drawRectangle({ x: 0, y: 770, width: 595, height: 72, color: rgb(0.11, 0.09, 0.07) });
-  page.drawRectangle({ x: 0, y: 766, width: 595, height: 4, color: rgb(0.76, 0.25, 0.05) });
-  page.drawText("CONSOLIDATED BRICKS & HARDWARE", {
-    x: 48,
-    y: 808,
-    size: 11,
-    font: strong,
-    color: rgb(0.96, 0.93, 0.88),
-  });
-  page.drawText("DELIVERY / ORDER NOTE", {
-    x: 48,
-    y: 786,
-    size: 18,
-    font: strong,
-    color: rgb(1, 1, 1),
-  });
-
-  let y = 730;
+  let y = await drawLetterhead(pdf, page, { regular: font, bold: strong }, "Delivery / order note", order.number);
+  y -= 8;
   page.drawText(order.number, { x: 48, y, size: 14, font: strong, color: rgb(0.11, 0.09, 0.07) });
   page.drawText(formatDate(order.createdAt), { x: 420, y, size: 11, font, color: rgb(0.4, 0.36, 0.32) });
   y -= 28;

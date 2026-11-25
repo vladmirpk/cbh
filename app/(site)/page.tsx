@@ -103,7 +103,7 @@ export default async function HomePage() {
       <section className="wrap mt-10 grid gap-3 lg:grid-cols-[0.9fr_1.35fr_0.9fr]">
         <article className="relative min-h-56 overflow-hidden rounded-2xl bg-ink text-white">
           <div className="absolute inset-0 opacity-50">
-            <Cover src="https://images.unsplash.com/photo-1517581177682-a085bb7ffb15?auto=format&fit=crop&w=800&q=70" alt="" />
+            <Cover src="/cbh_images/banner_bricks.png" alt="" />
           </div>
           <div className="absolute inset-0 bg-gradient-to-r from-[#08275f] via-[#08275fcc] to-transparent" />
           <div className="relative flex h-full flex-col justify-end p-5">

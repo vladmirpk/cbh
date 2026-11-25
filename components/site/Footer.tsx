@@ -15,7 +15,7 @@ const links = [
 export function Footer({ whatsappHref }: { whatsappHref: string }) {
   return (
     <footer className="bg-[#071a4a] text-white">
-      <div className="wrap flex flex-col gap-6 py-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className="wrap flex flex-col gap-6 py-7 lg:flex-row lg:items-center lg:justify-between">
         <Logo light />
         <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
           {links.map((link) => (

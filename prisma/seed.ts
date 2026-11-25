@@ -2,24 +2,26 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { calculateDelivery } from "../lib/delivery";
+import { CBH_CATEGORY, CBH_PRODUCT, CBH_PROMOTION, asset } from "../lib/cbh-images";
 
 const prisma = new PrismaClient();
-const img = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1600&q=80`;
 const pics = {
-  brick: img("photo-1604014237800-1c9102c219da"),
-  wall: img("photo-1517581177682-a085bb7ffb15"),
-  site: img("photo-1541888946425-d81bb19240f5"),
-  crew: img("photo-1504307651254-35680f356dfd"),
-  house: img("photo-1600585154340-be6161a56a0c"),
-  house2: img("photo-1600596542815-ffad4c1539a9"),
-  pool: img("photo-1576013551627-0cc20b96c2a7"),
-  light: img("photo-1565814329452-e1efa11c5b89"),
-  garden: img("photo-1558904541-efa843a96f01"),
-  solar: img("photo-1509391366360-2e959784a276"),
-  roof: img("photo-1508514177221-188b1cf16e9d"),
-  field: img("photo-1497435334941-8c899ee9e8e9"),
-  yard: img("photo-1586528116311-ad8dd3c8310d"),
-  city: img("photo-1477959858617-67f85cf4f1df"),
+  brick: asset("face_brick.jpg"),
+  wall: asset("common_brick.jpg"),
+  site: asset("engineering_brick.jpg"),
+  crew: asset("banner_bricks.png"),
+  house: asset("interlocking_pavers.jpg"),
+  house2: asset("charcoal_pavers_interlocking.jpg"),
+  pool: asset("pool_coping.jpg"),
+  light: asset("floodlights.jpg"),
+  garden: asset("pavers.jpg"),
+  solar: asset("home_solar_system.jpg"),
+  roof: asset("home_solar_systems.jpg"),
+  field: asset("solar_water_pump_kit.jpg"),
+  yard: asset("portland_cement.jpg"),
+  city: asset("kerbstone.jpg"),
+  bannerSolar: asset("banner_solar.png"),
+  bannerPavers: asset("banner_pavers_pool.png"),
 };
 
 const specs = (pairs: [string, string][]) => JSON.stringify(pairs.map(([label, value]) => ({ label, value })));
@@ -56,15 +58,15 @@ async function main() {
   });
 
   const categoryData = [
-    ["Bricks", "bricks", "Common, face and engineering bricks for walls that have to last a Harare season.", pics.wall, 1],
-    ["Pavers", "pavers", "Interlocking pavers for drives, yards and public walkways.", pics.house, 2],
-    ["Kerbstones", "kerbstones", "Straight and mountable kerbs for roads, drives and parking.", pics.city, 3],
-    ["Paver slabs", "paver-slabs", "Large-format slabs for paths, patios and pool surrounds.", pics.house2, 4],
-    ["Pool copings", "pool-copings", "Bullnose copings for residential and commercial pools.", pics.pool, 5],
-    ["Building materials", "building-materials", "Cement, sand and the materials that sit beside the brick.", pics.yard, 6],
-    ["Solar & Energy", "solar-energy", "Panels, inverters, batteries and complete systems. Built to expand without a new website.", pics.solar, 7],
-    ["Lighting", "lighting", "Yard, security and site lighting.", pics.light, 8],
-    ["Landscaping", "landscaping", "Edging, cobbles and finishes around the building.", pics.garden, 9],
+    ["Bricks", "bricks", "Common, face and engineering bricks for walls that have to last a Harare season.", CBH_CATEGORY.bricks, 1],
+    ["Pavers", "pavers", "Interlocking pavers for drives, yards and public walkways.", CBH_CATEGORY.pavers, 2],
+    ["Kerbstones", "kerbstones", "Straight and mountable kerbs for roads, drives and parking.", CBH_CATEGORY.kerbstones, 3],
+    ["Paver slabs", "paver-slabs", "Large-format slabs for paths, patios and pool surrounds.", CBH_CATEGORY["paver-slabs"], 4],
+    ["Pool copings", "pool-copings", "Bullnose copings for residential and commercial pools.", CBH_CATEGORY["pool-copings"], 5],
+    ["Building materials", "building-materials", "Cement, sand and the materials that sit beside the brick.", CBH_CATEGORY["building-materials"], 6],
+    ["Solar & Energy", "solar-energy", "Panels, inverters, batteries and complete systems. Built to expand without a new website.", CBH_CATEGORY["solar-energy"], 7],
+    ["Lighting", "lighting", "Yard, security and site lighting.", CBH_CATEGORY.lighting, 8],
+    ["Landscaping", "landscaping", "Edging, cobbles and finishes around the building.", CBH_CATEGORY.landscaping, 9],
   ] as const;
   const categories = new Map<string, string>();
   for (const [name, slug, description, image, sortOrder] of categoryData) {
@@ -173,9 +175,9 @@ async function main() {
 
   await prisma.promotion.createMany({
     data: [
-      { title: "Maxi brick promotion", slug: "maxi-brick", headline: "Maxi bricks, while the promotion holds.", description: "A larger brick at a promotional unit price. Quote the quantity and the suburb together.", image: pics.wall, priceLabel: "US$0.15 / brick", discount: "Yard promotion", cta: "quote", ctaHref: "/quote?product=cbh-maxi-brick", targetArea: "Harare", audience: "Home builders", active: true },
-      { title: "Solar early interest", slug: "solar-early-interest", headline: "CBH Solar & Energy. Launching soon.", description: "Reliable energy conversations for homes, farms and businesses — before the stock lands.", image: pics.solar, discount: "Register interest", cta: "interest", ctaHref: "/launch/cbh-solar-home", targetArea: "Harare and towns", audience: "Homeowners and farms", active: true },
-      { title: "Floodlight offer", slug: "floodlight-offer", headline: "100 W LED floods for the gate.", description: "Security lighting at the promotional price. Ask on WhatsApp if you need a count for a site.", image: pics.light, priceLabel: "US$35", discount: "Promotional", cta: "whatsapp", ctaHref: "/products/led-floodlight-100w", targetArea: "Harare", audience: "Home and commercial", active: true },
+      { title: "Maxi brick promotion", slug: "maxi-brick", headline: "Maxi bricks, while the promotion holds.", description: "A larger brick at a promotional unit price. Quote the quantity and the suburb together.", image: CBH_PROMOTION["maxi-brick"], priceLabel: "US$0.15 / brick", discount: "Yard promotion", cta: "quote", ctaHref: "/quote?product=cbh-maxi-brick", targetArea: "Harare", audience: "Home builders", active: true },
+      { title: "Solar early interest", slug: "solar-early-interest", headline: "CBH Solar & Energy. Launching soon.", description: "Reliable energy conversations for homes, farms and businesses — before the stock lands.", image: CBH_PROMOTION["solar-early-interest"], discount: "Register interest", cta: "interest", ctaHref: "/launch/cbh-solar-home", targetArea: "Harare and towns", audience: "Homeowners and farms", active: true },
+      { title: "Floodlight offer", slug: "floodlight-offer", headline: "100 W LED floods for the gate.", description: "Security lighting at the promotional price. Ask on WhatsApp if you need a count for a site.", image: CBH_PROMOTION["floodlight-offer"], priceLabel: "US$35", discount: "Promotional", cta: "whatsapp", ctaHref: "/products/led-floodlight-100w", targetArea: "Harare", audience: "Home and commercial", active: true },
     ],
   });
   await prisma.project.createMany({
@@ -366,7 +368,11 @@ function product(
     relatedSlugs,
     seoTitle: seoTitle ?? null,
     seoDescription: seoDescription ?? null,
-    images: images.startsWith("[") ? images : JSON.stringify([images]),
+    images: CBH_PRODUCT[slug]
+      ? JSON.stringify(CBH_PRODUCT[slug])
+      : images.startsWith("[")
+        ? images
+        : JSON.stringify([images]),
     launchDate: launchDate ?? (stockStatus === "coming_soon" ? "2027-01-15" : null),
     installRequired: categorySlug === "solar-energy",
     active: true,
