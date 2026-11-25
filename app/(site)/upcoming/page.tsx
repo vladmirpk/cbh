@@ -21,9 +21,9 @@ export default async function UpcomingPage() {
   });
   return (
     <div className="wrap py-12">
-      <p className="text-xs uppercase tracking-[0.18em] text-stone">Demand before inventory</p>
-      <h1 className="display mt-2 max-w-3xl text-5xl">Tell CBH what to bring in next.</h1>
-      <p className="mt-4 max-w-2xl text-stone">Register interest with a quantity and a location. The sales team sees the lead before capital is committed to stock.</p>
+      <p className="text-xs uppercase tracking-[0.18em] text-stone">Coming soon</p>
+      <h1 className="display mt-2 max-w-3xl text-5xl">Upcoming products</h1>
+      <p className="mt-3 max-w-xl text-stone">Register interest with quantity and location.</p>
       <div className="mt-10 grid gap-8">
         {products.map((product) => (
           <article key={product.id} className="grid overflow-hidden rounded-[1.6rem] border border-line bg-card md:grid-cols-2">
@@ -42,17 +42,17 @@ export default async function UpcomingPage() {
       <section className="mt-12 grid gap-6 lg:grid-cols-2">
         <div>
           <h2 className="display text-4xl">Register interest</h2>
-          <p className="mt-2 text-stone">Name, phone, WhatsApp, email, location, product, estimated quantity and anything the site must allow for.</p>
+          <p className="mt-2 text-stone">Fill the form. Sales will follow up.</p>
         </div>
         <div className="panel p-5">
           <SmartForm
             action={registerInterest}
-            submit="Register interest"
+            submit="Register"
             confirm={{
-              title: "Register your interest?",
-              message: "Confirm you want CBH to capture this as a demand lead before the product launches.",
-              confirmLabel: "Yes, register me",
-              cancelLabel: "Keep editing",
+              title: "Register interest?",
+              message: "Sales will contact you when stock moves.",
+              confirmLabel: "Register",
+              cancelLabel: "Back",
             }}
           >
             <input type="hidden" name="source" value="upcoming" />

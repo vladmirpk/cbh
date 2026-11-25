@@ -9,7 +9,7 @@ type Item = { slug: string; name: string; image?: string | null; qty: number };
 
 export default function CartPage() {
   const [items, setItems] = useState<Item[]>([]);
-  const [confirm, setConfirm] = useState<(ConfirmPayload & { slug?: string }) | null>(null);
+  const [confirm, setConfirm] = useState<(ConfirmPayload & { slug?: string; goQuote?: boolean }) | null>(null);
 
   useEffect(() => {
     try {
@@ -23,11 +23,9 @@ export default function CartPage() {
   function askRemove(item: Item) {
     setConfirm({
       title: "Remove from cart?",
-      message: "Confirm you want to take this product out of your cart.",
-      detail: item.name,
-      image: item.image || null,
-      confirmLabel: "Yes, remove it",
-      cancelLabel: "Keep it",
+      message: item.name,
+      confirmLabel: "Remove",
+      cancelLabel: "Back",
       tone: "danger",
       slug: item.slug,
     });
@@ -44,11 +42,11 @@ export default function CartPage() {
 
   function askQuoteAll() {
     setConfirm({
-      title: "Start a quote?",
-      message: "Confirm you want to move these cart items into a provisional quote with delivery.",
-      detail: `${items.length} product${items.length === 1 ? "" : "s"} in cart`,
-      confirmLabel: "Yes, get a quote",
-      cancelLabel: "Stay in cart",
+      title: "Open quote?",
+      message: `${items.length} item${items.length === 1 ? "" : "s"} in cart`,
+      confirmLabel: "Go to quote",
+      cancelLabel: "Back",
+      goQuote: true,
     });
   }
 
@@ -58,8 +56,8 @@ export default function CartPage() {
         <h1 className="display text-4xl text-ink">Cart</h1>
         {items.length === 0 ? (
           <p className="mt-6 rounded-2xl border border-line bg-white p-6 text-stone">
-            Your cart is empty.{" "}
-            <Link href="/products" className="font-bold text-ink">Explore products</Link>
+            Cart is empty.{" "}
+            <Link href="/products" className="font-bold text-ink">Browse products</Link>
           </p>
         ) : (
           <div className="mt-6 grid gap-3">
@@ -80,7 +78,7 @@ export default function CartPage() {
             ))}
             <div className="sticky bottom-20 z-10 mt-2 md:static md:bottom-auto">
               <button type="button" onClick={askQuoteAll} className="btn btn-primary w-full shadow-lg md:w-auto">
-                Get a provisional quote
+                Get a quote
               </button>
             </div>
           </div>
@@ -92,7 +90,7 @@ export default function CartPage() {
         onCancel={() => setConfirm(null)}
         onConfirm={() => {
           if (confirm?.slug) remove();
-          else if (confirm) window.location.href = "/quote";
+          else if (confirm?.goQuote) window.location.href = "/quote?from=cart";
         }}
       />
     </div>

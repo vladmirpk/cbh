@@ -76,7 +76,7 @@ export default async function HomePage() {
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-stone">Coming soon</p>
-              <h2 className="display mt-2 text-4xl text-ink">Register interest early</h2>
+              <h2 className="display mt-2 text-4xl text-ink">Coming soon</h2>
             </div>
             <Link href="/upcoming" className="btn btn-ghost">Upcoming products</Link>
           </div>
@@ -135,7 +135,7 @@ export default async function HomePage() {
           </div>
           <div>
             <h2 className="text-4xl font-extrabold leading-none">Your One-Stop<br /><span className="text-gold">Building Partner</span></h2>
-            <p className="mt-3 text-sm text-white/80">Price materials and delivery, then hand the lead to the sales desk.</p>
+            <p className="mt-3 text-sm text-white/80">Price materials and delivery, then submit.</p>
             <Link href="/quote" className="mt-5 inline-flex rounded-full bg-gold px-4 py-2.5 text-sm font-bold text-[#10233f]">Get a Quote →</Link>
           </div>
         </article>

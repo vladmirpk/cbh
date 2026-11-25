@@ -84,19 +84,18 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       <section className="mt-12 grid gap-6 lg:grid-cols-[.8fr_1.2fr]">
         <div>
           <h2 className="display text-4xl">Request a quote</h2>
-          <p className="mt-2 text-sm text-stone">This opens a lead for the sales team. For a priced delivery estimate, use the provisional quote.</p>
+          <p className="mt-2 text-sm text-stone">Or <Link href={`/quote?product=${product.slug}`} className="font-semibold text-ink">price with delivery</Link>.</p>
         </div>
         <div className="panel p-5">
           <SmartForm
             action={sendEnquiry}
-            submit="Send enquiry"
+            submit="Send"
             confirm={{
-              title: "Send this enquiry?",
-              message: "Confirm you want CBH sales to receive this quote request.",
-              detail: product.name,
+              title: "Send enquiry?",
+              message: product.name,
               image: images[0],
-              confirmLabel: "Yes, send it",
-              cancelLabel: "Keep editing",
+              confirmLabel: "Send",
+              cancelLabel: "Back",
             }}
           >
             <input type="hidden" name="productId" value={product.id} />

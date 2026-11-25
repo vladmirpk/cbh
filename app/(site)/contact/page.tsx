@@ -11,28 +11,28 @@ export default async function ContactPage() {
   return (
     <div className="wrap grid gap-10 py-12 lg:grid-cols-2">
       <div>
-        <h1 className="display text-5xl">Talk to the yard</h1>
+        <h1 className="display text-5xl">Contact</h1>
         <p className="mt-4 text-stone">{site.address}</p>
         <p className="mt-2">{site.hours}</p>
         <div className="mt-6 grid gap-2 text-lg">
           <a href={`tel:${site.phone.replace(/\s/g, "")}`}>{site.phone}</a>
           <a href={`mailto:${site.email}`}>{site.email}</a>
-          <a className="text-brick" href={waLink(site.whatsapp, "Hello CBH, I have an enquiry.")}>WhatsApp {site.whatsapp}</a>
+          <a className="text-brick" href={waLink(site.whatsapp, "Hello CBH, I need materials.")}>WhatsApp {site.whatsapp}</a>
         </div>
         <div className="panel mt-8 p-5">
-          <h2 className="display text-3xl">Contractor accounts</h2>
-          <p className="mt-2 text-sm text-stone">Companies can register a contact, typical monthly volume and whether they want to discuss credit terms. Limits and statements are recorded against the lead until the credit programme is switched on.</p>
+          <h2 className="display text-3xl">Contractors</h2>
+          <p className="mt-2 text-sm text-stone">Add company details and monthly volume when you send the form.</p>
         </div>
       </div>
       <div className="panel p-5">
         <SmartForm
           action={sendEnquiry}
-          submit="Send to the sales desk"
+          submit="Send"
           confirm={{
-            title: "Send this message?",
-            message: "Confirm you want CBH to receive your enquiry.",
-            confirmLabel: "Yes, send it",
-            cancelLabel: "Keep editing",
+            title: "Send enquiry?",
+            message: "CBH will reply on phone or WhatsApp.",
+            confirmLabel: "Send",
+            cancelLabel: "Back",
           }}
         >
           <input type="hidden" name="source" value="direct" />

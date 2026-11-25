@@ -83,8 +83,8 @@ export function ZonePicker({
       <div className="rounded-[1.5rem] bg-olive p-4 text-plaster md:p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-[#d7c4a4]">Dispatch map · {depot.name}</p>
-            <p className="mt-1 text-sm text-[#e7efe9]">Pick a suburb, share your location, or drop a pin. Distance is measured from the CBH yard.</p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[#d7c4a4]">Delivery · {depot.name}</p>
+            <p className="mt-1 text-sm text-[#e7efe9]">Choose suburb, share location, or drop a pin.</p>
           </div>
           <button type="button" className="btn btn-ghost border-white/30 text-sm" onClick={share}>
             Share my location
@@ -117,8 +117,7 @@ export function ZonePicker({
       {mapsKey ? <MapPin mapRef={mapRef} mapsKey={mapsKey} depot={depot} onPick={choosePin} /> : null}
       {value ? (
         <p className="text-sm text-stone">
-          Using <strong className="text-ink">{value.zoneName}</strong> · about {value.distanceKm} km
-          {value.method === "pin" ? " (road-adjusted from the pin)" : " (zone rate set by CBH)"}.
+          <strong className="text-ink">{value.zoneName}</strong> · {value.distanceKm} km
         </p>
       ) : null}
     </div>
@@ -172,7 +171,7 @@ function MapPin({
 
   return (
     <div>
-      <p className="label">Or drop a pin</p>
+      <p className="label">Drop a pin</p>
       <div ref={mapRef} className="h-64 overflow-hidden rounded-[1.4rem] border border-line bg-white" />
     </div>
   );

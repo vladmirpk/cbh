@@ -15,9 +15,9 @@ export default async function DeliveryPage() {
   return (
     <div className="wrap py-12">
       <p className="text-xs uppercase tracking-[0.18em] text-stone">From {settings.depotName}</p>
-      <h1 className="display mt-2 max-w-3xl text-5xl">Delivery is a rate card, not a guess buried in the code.</h1>
-      <p className="mt-4 max-w-2xl text-stone">
-        Provisional delivery is base charge + distance + the vehicle that can carry the load, then fuel and any extra the yard has set. Staff change every number from the dashboard.
+      <h1 className="display mt-2 max-w-3xl text-5xl">Delivery rates</h1>
+      <p className="mt-3 max-w-xl text-stone">
+        Base + distance + vehicle, then fuel. Quote to see your estimate.
       </p>
       <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
@@ -49,8 +49,8 @@ export default async function DeliveryPage() {
           </tbody>
         </table>
       </div>
-      <h2 className="display mt-12 text-3xl">Zones on the card</h2>
-      <p className="mt-2 text-sm text-stone">{zones.length} suburbs and towns, measured from {settings.depotAddress}. A pin or shared location uses road-adjusted distance instead of the zone figure.</p>
+      <h2 className="display mt-12 text-3xl">Zones</h2>
+      <p className="mt-2 text-sm text-stone">{zones.length} areas from {settings.depotAddress}.</p>
       <div className="mt-4 flex flex-wrap gap-2">
         {zones.map((zone) => (
           <span key={zone.id} className="rounded-full border border-line bg-card px-3 py-1 text-sm">{zone.name} · {zone.distanceKm} km</span>

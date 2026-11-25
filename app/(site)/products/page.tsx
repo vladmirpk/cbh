@@ -40,7 +40,7 @@ export default async function ProductsPage({
     <div className="wrap py-12">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-stone">Catalogue</p>
       <h1 className="display mt-2 text-5xl text-ink">Products</h1>
-      <p className="mt-3 max-w-2xl text-stone">Bricks, pavers, building materials, lighting and upcoming solar — search and filter without rebuilding the site when CBH adds a category.</p>
+      <p className="mt-3 max-w-xl text-stone">Search and filter, then quote or add to cart.</p>
       <form className="mt-8 grid gap-3 md:grid-cols-[1.4fr_.8fr_.8fr_auto]" action="/products">
         <input className="field" name="q" defaultValue={q} placeholder="Search pavers, bricks, solar…" />
         <select className="field" name="category" defaultValue={sp.category ?? ""}>

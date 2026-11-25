@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "About CBH",
-  description: "Consolidated Bricks & Hardware is a Zimbabwean materials business building a digital sales desk around bricks, pavers and new product lines.",
+  description: "Consolidated Bricks & Hardware — materials and delivery from Harare.",
 };
 
 export default async function AboutPage() {
@@ -18,8 +18,8 @@ export default async function AboutPage() {
     <div>
       <section className="bg-ink text-plaster">
         <div className="wrap py-16 md:py-24">
-          <p className="text-xs uppercase tracking-[0.2em] text-[#f5c400]">About the company</p>
-          <h1 className="display mt-4 max-w-4xl text-5xl leading-[0.95] md:text-7xl">Not a brochure. The front door of the sales operation.</h1>
+          <p className="text-xs uppercase tracking-[0.2em] text-[#f5c400]">About</p>
+          <h1 className="display mt-4 max-w-4xl text-5xl leading-[0.95] md:text-7xl">Consolidated Bricks & Hardware</h1>
         </div>
       </section>
       <div className="wrap grid gap-10 py-14 md:grid-cols-[1.1fr_.9fr]">
@@ -41,9 +41,9 @@ export default async function AboutPage() {
       </div>
       <section className="wrap grid gap-4 pb-8 md:grid-cols-3">
         {[
-          ["Category led", "Solar, lighting and landscaping sit beside bricks. Adding a line is a catalogue change."],
-          ["Quote before the call", "A customer can leave with a provisional materials and delivery figure, and CBH keeps the lead."],
-          ["The desk stays in the open", "Roles cover management, sales, marketing and operations. Customer data exports as CSV."],
+          ["Catalogue", "Bricks, pavers, materials and more."],
+          ["Quotes", "Price materials and delivery online."],
+          ["Yard", "Call, WhatsApp or visit the desk."],
         ].map(([title, copy]) => (
           <article key={title} className="rounded-[1.4rem] bg-olive p-6 text-plaster">
             <h2 className="display text-3xl">{title}</h2>

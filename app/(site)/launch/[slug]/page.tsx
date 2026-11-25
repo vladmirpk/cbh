@@ -68,12 +68,11 @@ export default async function LaunchPage({ params }: { params: Promise<{ slug: s
               action={registerInterest}
               submit="Register interest"
               confirm={{
-                title: "Register your interest?",
-                message: "Confirm you want CBH to record your interest in this launch.",
-                detail: product.name,
+                title: "Register interest?",
+                message: product.name,
                 image,
-                confirmLabel: "Yes, register me",
-                cancelLabel: "Keep editing",
+                confirmLabel: "Register",
+                cancelLabel: "Back",
               }}
             >
               <input type="hidden" name="productId" value={product.id} />

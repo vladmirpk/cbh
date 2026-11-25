@@ -11,8 +11,8 @@ export default async function PromotionsPage() {
   const live = promotions.filter((item) => !item.expiresAt || item.expiresAt >= today);
   return (
     <div className="wrap py-12">
-      <h1 className="display text-5xl">Offers running now</h1>
-      <p className="mt-3 max-w-2xl text-stone">Campaigns are created from the staff desk. Each one can point to a quote, a launch, or WhatsApp.</p>
+      <h1 className="display text-5xl">Promotions</h1>
+      <p className="mt-3 max-w-xl text-stone">Current offers. Tap one to continue.</p>
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         {live.map((item) => (
           <Link key={item.id} href={`/promotions/${item.slug}?src=advertisement`} className="overflow-hidden rounded-[1.5rem] border border-line bg-card">

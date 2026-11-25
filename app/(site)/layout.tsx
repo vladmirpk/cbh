@@ -17,7 +17,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const phone = site?.phone || "+263 242 123 456";
   const email = site?.email || "sales@cbh.co.zw";
   const address = site?.address || "Stand 123, Gweru Road, Harare";
-  const whatsappHref = waLink(site?.whatsapp || phone, "Hello CBH, I would like to talk about materials and delivery.");
+  const whatsappHref = waLink(site?.whatsapp || phone, "Hello CBH, I need materials.");
   return (
     <>
       <SourceCapture />

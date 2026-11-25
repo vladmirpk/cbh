@@ -246,7 +246,7 @@ export async function registerInterest(_prev: FormState, formData: FormData): Pr
     `/admin/leads/${lead.id}`,
   );
   await audit("create", "lead", lead.id, "interest", name);
-  return { success: "Interest registered. A CBH salesperson will contact you when this product moves." };
+  return { success: "Registered. Sales will call." };
 }
 
 export async function sendEnquiry(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -293,7 +293,7 @@ export async function sendEnquiry(_prev: FormState, formData: FormData): Promise
   }
   await notify("New enquiry", `${name} · ${lead.productName} · ${lead.location}`, `/admin/leads/${lead.id}`);
   await audit("create", "lead", lead.id, source, name);
-  return { success: "Enquiry received. It is now in the CBH sales queue." };
+  return { success: "Sent. Sales will call." };
 }
 
 export async function requestOrder(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -303,7 +303,7 @@ export async function requestOrder(_prev: FormState, formData: FormData): Promis
   const quote = await prisma.quote.findUnique({ where: { publicToken: token } });
   if (!quote) return { error: "Quotation not found." };
   const existing = await prisma.order.findFirst({ where: { quoteId: quote.id } });
-  if (existing) return { success: `Order ${existing.number} is already with the CBH team.` };
+  if (existing) return { success: `Order ${existing.number} already sent.` };
   const count = await prisma.order.count();
   const number = `ORD-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
   const order = await prisma.order.create({
@@ -346,5 +346,5 @@ export async function requestOrder(_prev: FormState, formData: FormData): Promis
   }
   await notify("Order requested", `${quote.customerName} wants to proceed with ${quote.number}.`, `/admin/orders`);
   await audit("create", "order", order.id, number, quote.customerName);
-  return { success: `Order request ${number} is with CBH. Payment is arranged with your salesperson — online checkout is the next phase.` };
+  return { success: `Order ${number} sent. Sales will confirm payment.` };
 }

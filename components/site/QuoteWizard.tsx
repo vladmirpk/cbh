@@ -30,8 +30,30 @@ type BasketLine = {
   quantity: number;
 };
 
+type CartItem = { slug: string; name: string; image?: string | null; qty: number };
+
 function defaultQty(product: WizardProduct) {
   return Math.max(product.moq, product.unit === "brick" ? 1000 : product.moq);
+}
+
+function basketFromCart(products: WizardProduct[]): BasketLine[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem("cbh_cart") || "[]") as CartItem[];
+    if (!Array.isArray(raw) || !raw.length) return [];
+    const lines: BasketLine[] = [];
+    for (const item of raw) {
+      const product = products.find((entry) => entry.slug === item.slug);
+      if (!product) continue;
+      const qty = Number(item.qty);
+      lines.push({
+        productId: product.id,
+        quantity: Math.max(product.moq, Number.isFinite(qty) && qty > 0 ? qty : defaultQty(product)),
+      });
+    }
+    return lines;
+  } catch {
+    return [];
+  }
 }
 
 export function QuoteWizard({
@@ -43,6 +65,7 @@ export function QuoteWizard({
   mapsKey,
   initialSlug,
   initialSource,
+  fromCart = false,
 }: {
   products: WizardProduct[];
   zones: ZoneOption[];
@@ -52,6 +75,7 @@ export function QuoteWizard({
   mapsKey?: string;
   initialSlug?: string;
   initialSource?: string;
+  fromCart?: boolean;
 }) {
   const initial = products.find((item) => item.slug === initialSlug) ?? null;
   const [step, setStep] = useState(1);
@@ -63,8 +87,11 @@ export function QuoteWizard({
   );
   const [location, setLocation] = useState<LocationChoice | null>(null);
   const [source, setSource] = useState(initialSource || "website");
-  const [confirm, setConfirm] = useState<(ConfirmPayload & { kind: "add" | "remove" | "submit"; productId?: string }) | null>(null);
+  const [confirm, setConfirm] = useState<(ConfirmPayload & { kind: "remove" | "submit"; productId?: string }) | null>(null);
   const skipConfirm = useRef(false);
+  const stepTopRef = useRef<HTMLDivElement>(null);
+  const cartLoaded = useRef(false);
+  const skipStepScroll = useRef(true);
   const [state, action, pending] = useActionState(createQuote, null);
   const selected = products.find((item) => item.id === selectedId) ?? null;
 
@@ -73,6 +100,32 @@ export function QuoteWizard({
     const stored = localStorage.getItem("cbh_source");
     if (stored) setSource(stored);
   }, [initialSource]);
+
+  useEffect(() => {
+    if (cartLoaded.current) return;
+    if (initial && !fromCart) return;
+    const fromStorage = basketFromCart(products);
+    if (!fromStorage.length) return;
+    cartLoaded.current = true;
+    setBasket(fromStorage);
+    const first = products.find((item) => item.id === fromStorage[0]?.productId);
+    if (first) {
+      setSelectedId(first.id);
+      setDraftQty(String(fromStorage[0].quantity));
+    }
+  }, [products, initial, fromCart]);
+
+  useEffect(() => {
+    if (skipStepScroll.current) {
+      skipStepScroll.current = false;
+      return;
+    }
+    stepTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [step]);
+
+  function goStep(next: number) {
+    setStep(next);
+  }
 
   const filtered = products.filter((item) => {
     const hay = `${item.name} ${item.sku} ${item.category}`.toLowerCase();
@@ -129,22 +182,6 @@ export function QuoteWizard({
 
   const draft = Number(draftQty);
 
-  function askAddSelected() {
-    if (!selected || !Number.isFinite(draft) || draft <= 0 || draft < selected.moq) return;
-    const updating = basket.some((line) => line.productId === selected.id);
-    setConfirm({
-      kind: "add",
-      title: updating ? "Update this product?" : "Add to your quote?",
-      message: updating
-        ? "Confirm you want to change the quantity for this product in your provisional quote."
-        : "Confirm you want to add this product to your quote basket.",
-      detail: `${selected.name} · ${formatQty(draft)} ${selected.unit}`,
-      image: selected.image || null,
-      confirmLabel: updating ? "Yes, update it" : "Yes, add it",
-      cancelLabel: "Not yet",
-    });
-  }
-
   function applyAddSelected() {
     if (!selected || !Number.isFinite(draft) || draft <= 0 || draft < selected.moq) return;
     setBasket((current) => {
@@ -156,7 +193,6 @@ export function QuoteWizard({
       }
       return [...current, { productId: selected.id, quantity: draft }];
     });
-    setConfirm(null);
   }
 
   function updateQty(productId: string, value: string) {
@@ -174,11 +210,9 @@ export function QuoteWizard({
       kind: "remove",
       productId,
       title: "Remove from quote?",
-      message: "Confirm you want to take this product out of your quote basket.",
-      detail: line.productName,
-      image: line.image,
-      confirmLabel: "Yes, remove it",
-      cancelLabel: "Keep it",
+      message: line.productName,
+      confirmLabel: "Remove",
+      cancelLabel: "Back",
       tone: "danger",
     });
   }
@@ -192,6 +226,7 @@ export function QuoteWizard({
   return (
     <div className="grid items-start gap-6 pb-24 md:pb-0 lg:grid-cols-[1fr_340px]">
       <div className="panel p-5 md:p-7">
+        <div ref={stepTopRef} className="scroll-mt-24" />
         <ol className="mb-6 flex flex-wrap gap-4 text-xs uppercase tracking-[0.14em] text-stone">
           {["Products", "Location", "Your details"].map((label, index) => (
             <li key={label} className={step === index + 1 ? "text-brick" : ""}>{index + 1}. {label}</li>
@@ -200,9 +235,9 @@ export function QuoteWizard({
 
         {step === 1 ? (
           <div className="grid gap-4">
-            <p className="text-sm text-stone">Add every product for this site — bricks, cement, pavers, solar — then continue once the basket looks right.</p>
+            <p className="text-sm text-stone">Add products, then continue.</p>
             <label>
-              <span className="label">Search products</span>
+              <span className="label">Search</span>
               <input className="field" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Bricks, pavers, solar…" />
             </label>
             <div className="grid max-h-64 gap-2 overflow-auto">
@@ -247,23 +282,23 @@ export function QuoteWizard({
                     onChange={(event) => setDraftQty(event.target.value)}
                   />
                   {Number.isFinite(draft) && draft < selected.moq ? (
-                    <p className="mt-1 text-sm text-brick">Minimum order is {selected.moq} {selected.unit}.</p>
+                    <p className="mt-1 text-sm text-brick">Min {selected.moq} {selected.unit}</p>
                   ) : null}
                 </label>
                 <button
                   type="button"
                   className="btn btn-primary w-full sm:w-auto"
                   disabled={!Number.isFinite(draft) || draft < selected.moq}
-                  onClick={askAddSelected}
+                  onClick={applyAddSelected}
                 >
-                  {basket.some((line) => line.productId === selected.id) ? "Update in quote" : "Add to quote"}
+                  {basket.some((line) => line.productId === selected.id) ? "Update" : "Add"}
                 </button>
               </div>
             ) : null}
 
             {lines.length ? (
               <div className="grid gap-2">
-                <p className="label">Your quote basket</p>
+                <p className="label">In this quote</p>
                 {lines.map((line) => (
                   <div key={line.productId} className="grid grid-cols-[64px_1fr] gap-3 rounded-2xl border border-line bg-white p-3 sm:grid-cols-[72px_1fr_120px_auto] sm:items-center">
                     <div className="aspect-square overflow-hidden rounded-xl bg-[#e8eef8]">
@@ -289,13 +324,11 @@ export function QuoteWizard({
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-sm text-stone">No products in the quote yet. Pick one above and add it.</p>
-            )}
+            ) : null}
 
             {moqError ? (
               <p className="text-sm text-brick">
-                {moqError.productName} needs at least {moqError.moq} {moqError.unit}.
+                {moqError.productName}: min {moqError.moq} {moqError.unit}
               </p>
             ) : null}
 
@@ -303,9 +336,9 @@ export function QuoteWizard({
               className="btn btn-ink"
               type="button"
               disabled={!lines.length || Boolean(moqError)}
-              onClick={() => setStep(2)}
+              onClick={() => goStep(2)}
             >
-              Continue to location
+              Next: Location
             </button>
           </div>
         ) : null}
@@ -314,8 +347,8 @@ export function QuoteWizard({
           <div className="grid gap-4">
             <ZonePicker zones={zones} depot={depot} roadFactor={rates.roadFactor} mapsKey={mapsKey} value={location} onChange={setLocation} />
             <div className="flex gap-2">
-              <button className="btn btn-ghost" type="button" onClick={() => setStep(1)}>Back</button>
-              <button className="btn btn-ink" type="button" disabled={!location} onClick={() => setStep(3)}>Add your details</button>
+              <button className="btn btn-ghost" type="button" onClick={() => goStep(1)}>Back</button>
+              <button className="btn btn-ink" type="button" disabled={!location} onClick={() => goStep(3)}>Next: Your details</button>
             </div>
           </div>
         ) : null}
@@ -333,11 +366,10 @@ export function QuoteWizard({
               event.preventDefault();
               setConfirm({
                 kind: "submit",
-                title: "Create this quote?",
-                message: "Confirm you want CBH to prepare this provisional quotation with materials and delivery.",
-                detail: `${lines.length} product${lines.length === 1 ? "" : "s"} · ${money(materialsTotal + (delivery?.deliveryCost || 0))} provisional`,
-                confirmLabel: "Yes, create quote",
-                cancelLabel: "Review again",
+                title: "Create quote?",
+                message: `${lines.length} item${lines.length === 1 ? "" : "s"} · ${money(materialsTotal + (delivery?.deliveryCost || 0))}`,
+                confirmLabel: "Create quote",
+                cancelLabel: "Back",
               });
             }}
           >
@@ -368,17 +400,17 @@ export function QuoteWizard({
               <label><span className="label">WhatsApp</span><input className="field" name="whatsapp" placeholder="Same as phone if blank" /></label>
             </div>
             <label><span className="label">Email</span><input className="field" name="email" type="email" /></label>
-            <label><span className="label">Street address, stand or site name</span><input className="field" name="address" placeholder="Added to the suburb you selected" /></label>
+            <label><span className="label">Site / stand</span><input className="field" name="address" /></label>
             <label><span className="label">Date required</span><input className="field" name="requiredDate" type="date" /></label>
             <label><span className="label">Notes</span><textarea className="field min-h-24" name="requirements" /></label>
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="customerType" value="contractor" /> This is a contractor or business account
+              <input type="checkbox" name="customerType" value="contractor" /> Contractor / business
             </label>
             <label><span className="label">Company</span><input className="field" name="company" /></label>
             {state?.error ? <p className="text-sm text-brick">{state.error}</p> : null}
             <div className="flex gap-2">
-              <button className="btn btn-ghost" type="button" onClick={() => setStep(2)}>Back</button>
-              <button className="btn btn-primary" disabled={pending}>{pending ? "Preparing quote…" : "Create provisional quote"}</button>
+              <button className="btn btn-ghost" type="button" onClick={() => goStep(2)}>Back</button>
+              <button className="btn btn-primary" disabled={pending}>{pending ? "Creating…" : "Create quote"}</button>
             </div>
           </form>
         ) : null}
@@ -390,8 +422,7 @@ export function QuoteWizard({
         onCancel={() => setConfirm(null)}
         onConfirm={() => {
           if (!confirm) return;
-          if (confirm.kind === "add") applyAddSelected();
-          else if (confirm.kind === "remove") applyRemoveLine();
+          if (confirm.kind === "remove") applyRemoveLine();
           else if (confirm.kind === "submit") {
             const form = document.getElementById("cbh-quote-form") as HTMLFormElement | null;
             setConfirm(null);
@@ -402,9 +433,9 @@ export function QuoteWizard({
       />
 
       <aside className="panel sticky top-24 p-5">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-stone">Live estimate</p>
+        <p className="text-[11px] uppercase tracking-[0.16em] text-stone">Estimate</p>
         <h2 className="display mt-2 text-3xl leading-none">
-          {lines.length ? `${lines.length} product${lines.length === 1 ? "" : "s"}` : "Empty quote"}
+          {lines.length ? `${lines.length} item${lines.length === 1 ? "" : "s"}` : "Empty"}
         </h2>
         {lines.length ? (
           <ul className="mt-4 max-h-56 space-y-2 overflow-auto text-sm">
@@ -422,22 +453,22 @@ export function QuoteWizard({
             ))}
           </ul>
         ) : (
-          <p className="mt-3 text-sm text-stone">Add products to build a multi-item provisional quote.</p>
+          <p className="mt-3 text-sm text-stone">Add products to continue.</p>
         )}
         <dl className="mt-5 grid gap-2 text-sm">
           <div className="flex justify-between"><dt>Materials</dt><dd>{money(materialsTotal)}</dd></div>
-          <div className="flex justify-between"><dt>Estimated delivery</dt><dd>{delivery ? money(delivery.deliveryCost) : "—"}</dd></div>
+          <div className="flex justify-between"><dt>Delivery</dt><dd>{delivery ? money(delivery.deliveryCost) : "—"}</dd></div>
           <div className="flex justify-between border-t border-line pt-2 text-base font-semibold">
-            <dt>Provisional total</dt>
+            <dt>Total</dt>
             <dd>{delivery ? money(materialsTotal + delivery.deliveryCost) : "—"}</dd>
           </div>
         </dl>
         {delivery ? (
-          <p className="mt-3 text-xs text-stone">{delivery.vehicle} · {delivery.trips} trip{delivery.trips === 1 ? "" : "s"} · {delivery.distanceKm} km · {formatQty(delivery.weightKg)} kg</p>
+          <p className="mt-3 text-xs text-stone">{delivery.vehicle} · {delivery.trips} trip{delivery.trips === 1 ? "" : "s"} · {delivery.distanceKm} km</p>
         ) : (
-          <p className="mt-3 text-xs text-stone">Choose a location to price delivery for the full load.</p>
+          <p className="mt-3 text-xs text-stone">Pick a location for delivery.</p>
         )}
-        <p className="mt-4 text-xs leading-relaxed text-copper">This is a provisional quotation. Final delivery charges are confirmed by CBH.</p>
+        <p className="mt-4 text-xs leading-relaxed text-copper">Provisional total. CBH confirms final delivery.</p>
       </aside>
     </div>
   );

@@ -29,7 +29,7 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
   const summary = lines
     .map((line) => `${formatQty(line.quantity)} ${line.unit} ${line.productName}`)
     .join(", ");
-  const message = `Hello CBH, I received provisional quotation ${quote.number} for ${summary} to ${quote.location}. Please confirm the formal quote.`;
+  const message = `Hello CBH, quote ${quote.number}: ${summary} to ${quote.location}. Please confirm.`;
   return (
     <div className="wrap py-12">
       <article className="mx-auto max-w-3xl rounded-[1.6rem] border border-line bg-card p-6 md:p-10">
@@ -81,18 +81,17 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
         </div>
       </article>
       <div className="mx-auto mt-6 max-w-3xl panel p-6">
-        <h2 className="display text-3xl">Ask CBH to proceed</h2>
-        <p className="mt-2 text-sm text-stone">This requests a formal order against the provisional figure. Payment is confirmed with your salesperson.</p>
+        <h2 className="display text-3xl">Request order</h2>
+        <p className="mt-2 text-sm text-stone">Sales confirms payment.</p>
         <div className="mt-4">
           <SmartForm
             action={requestOrder}
-            submit="Request this order"
+            submit="Request order"
             confirm={{
-              title: "Request this order?",
-              message: "Confirm you want CBH to proceed with a formal order against this provisional quotation.",
-              detail: quote.number,
-              confirmLabel: "Yes, request order",
-              cancelLabel: "Not yet",
+              title: "Request order?",
+              message: quote.number,
+              confirmLabel: "Request order",
+              cancelLabel: "Back",
             }}
           >
             <input type="hidden" name="token" value={quote.publicToken} />

@@ -63,7 +63,7 @@ export function MobileDock({ whatsappHref }: { whatsappHref: string }) {
           className="flex flex-col items-center gap-0.5 rounded-2xl px-1 py-2 text-[11px] font-bold text-[#157347]"
         >
           <MessageCircle size={20} />
-          Chat
+          WhatsApp
         </a>
       </div>
     </nav>

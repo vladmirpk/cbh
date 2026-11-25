@@ -23,7 +23,7 @@ const slides = [
   {
     image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1400&q=70",
     title: ["Delivered Across", "Zimbabwe"],
-    copy: "Price the load and the suburb together. A salesperson confirms the formal quotation.",
+    copy: "Price materials and delivery in one quote.",
     href: "/quote",
     cta: "Get a Quote",
   },
