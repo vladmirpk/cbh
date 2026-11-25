@@ -9,24 +9,24 @@ import { CBH_HERO } from "@/lib/cbh-images";
 const slides = [
   {
     image: CBH_HERO.bricks,
-    title: ["Build Better", "Together"],
-    copy: "Quality bricks, building materials and hardware for your home, business and infrastructure.",
-    href: "/products",
-    cta: "Explore Our Products",
+    title: ["Walls that", "outlast the season"],
+    copy: "Common, face and maxi bricks from the Workington yard — priced per unit, delivered to your stand.",
+    href: "/categories/bricks",
+    cta: "Browse bricks",
   },
   {
     image: CBH_HERO.pavers,
-    title: ["Pavers & Pools", "Done Properly"],
-    copy: "Interlocking pavers, kerbs and pool edges — quoted with delivery to your suburb.",
+    title: ["The drive looks", "finished"],
+    copy: "Interlocking pavers, kerbs and bullnose pool edges. Quote the load and the suburb in one go.",
     href: "/categories/pavers",
-    cta: "Shop Pavers",
+    cta: "Shop outdoor finishes",
   },
   {
     image: CBH_HERO.solar,
-    title: ["Solar for", "Zimbabwe"],
-    copy: "Home systems, inverters and batteries joining the CBH yard. Register interest now.",
+    title: ["Sun first.", "Grid second."],
+    copy: "Home systems, inverters and batteries joining the CBH catalogue. Register interest before the containers land.",
     href: "/categories/solar-energy",
-    cta: "Explore Solar",
+    cta: "Register for solar",
   },
 ];
 
