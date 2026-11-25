@@ -176,7 +176,8 @@ export function Header({
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <Link href="/quote" className="btn btn-primary hidden h-10 px-4 text-sm lg:inline-flex">
+          {/* Desktop only — .btn sets display:inline-flex which would beat Tailwind `hidden` without ! */}
+          <Link href="/quote" className="btn btn-primary !hidden h-10 px-4 text-sm lg:!inline-flex">
             Get a quote
           </Link>
 
