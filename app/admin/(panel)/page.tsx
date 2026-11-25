@@ -70,26 +70,41 @@ export default async function DashboardPage() {
     return { name: person.name, total: theirs.length, won: theirWon, lost: theirLost, value };
   });
 
+  const kpis = [
+    { label: "Leads in scope", value: String(leads.length), hint: management ? "All desks" : "Assigned + pool", href: "/admin/leads" },
+    { label: "Won", value: String(won), hint: `${lost} lost`, href: "/admin/leads" },
+    { label: "Conversion", value: leads.length ? `${Math.round((won / leads.length) * 100)}%` : "0%", hint: "Won / total", href: "/admin/leads" },
+    { label: "Open quote value", value: finance ? money(quoteValue) : "—", hint: `${openQuotes.length} open quotes`, href: "/admin/quotes" },
+  ];
+
   return (
     <div className="grid gap-6">
-      <div>
-        <h1 className="display text-4xl">Today on the desk</h1>
-        <p className="mt-2 text-sm text-stone">
-          {management ? "All leads and team performance." : "Your assigned and unassigned leads."}
-          {" "}GA sessions need NEXT_PUBLIC_GA_ID.
-        </p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ["Leads", String(leads.length)],
-          ["Won", String(won)],
-          ["Conversion", leads.length ? `${Math.round((won / leads.length) * 100)}%` : "0%"],
-          ["Quote value", finance ? money(quoteValue) : "—"],
-        ].map(([label, value]) => (
-          <div key={label} className="panel p-4">
-            <p className="text-xs uppercase tracking-[0.14em] text-stone">{label}</p>
-            <p className="display mt-2 text-4xl">{value}</p>
+      <section className="relative overflow-hidden rounded-2xl bg-[#071a4a] px-5 py-6 text-white shadow-[0_16px_40px_rgba(7,26,74,0.18)] md:px-7">
+        <div className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full bg-gold/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 left-1/3 h-40 w-40 rounded-full bg-[#0c3c8c]/60 blur-3xl" />
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gold">Command centre</p>
+            <h1 className="display mt-2 text-3xl text-white md:text-4xl">Today on the desk</h1>
+            <p className="mt-2 max-w-xl text-sm text-white/65">
+              {management ? "Full-site pulse: leads, quotes, catalogue, and campaigns." : "Your assigned work and the unassigned pool."}
+            </p>
           </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/admin/leads" className="btn btn-primary">Leads</Link>
+            <Link href="/admin/products" className="inline-flex items-center rounded-full border border-white/25 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10">Catalogue</Link>
+            <Link href="/admin/orders" className="inline-flex items-center rounded-full border border-white/25 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10">Orders</Link>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {kpis.map((item) => (
+          <Link key={item.label} href={item.href} className="panel group p-4 transition hover:border-[#0c3c8c]/35 hover:shadow-[0_12px_28px_rgba(12,60,140,0.08)]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone">{item.label}</p>
+            <p className="display mt-2 text-3xl text-ink md:text-4xl">{item.value}</p>
+            <p className="mt-1 text-xs text-stone group-hover:text-brick">{item.hint}</p>
+          </Link>
         ))}
       </div>
 
