@@ -10,7 +10,7 @@ export function NewLeadForm() {
 
   if (!open) {
     return (
-      <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>
+      <button type="button" className="btn btn-primary h-10 px-4 text-sm" onClick={() => setOpen(true)}>
         New lead
       </button>
     );

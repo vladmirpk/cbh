@@ -20,9 +20,28 @@ export type BoardLead = {
   stageReason?: string | null;
 };
 
+const COLUMN_TONE: Record<string, string> = {
+  new: "bg-[#fff8db] text-[#8a6a00]",
+  contacted: "bg-[#e8eef8] text-ink",
+  quoted: "bg-[#e8eef8] text-ink",
+  negotiating: "bg-[#e8eef8] text-ink",
+  won: "bg-[#e7f6ee] text-[#157347]",
+  lost: "bg-[#f4f4f5] text-stone",
+};
+
+const COLUMN_BAR: Record<string, string> = {
+  new: "bg-gold",
+  contacted: "bg-[#0c3c8c]/40",
+  quoted: "bg-[#0c3c8c]",
+  negotiating: "bg-[#071a4a]",
+  won: "bg-[#16a34a]",
+  lost: "bg-[#94a3b8]",
+};
+
 export function LeadBoard({ leads }: { leads: BoardLead[] }) {
   const router = useRouter();
   const [dragging, setDragging] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
   const [move, setMove] = useState<StageMove | null>(null);
 
   const onDone = useCallback(() => {
@@ -32,88 +51,133 @@ export function LeadBoard({ leads }: { leads: BoardLead[] }) {
 
   return (
     <>
-      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-        {LEAD_STATUSES.map((column) => {
-          const columnLeads = leads.filter((lead) => lead.status === column.id);
-          return (
-            <div
-              key={column.id}
-              className={`rounded-2xl border border-line bg-white p-2 transition ${
-                dragging ? "ring-1 ring-[#0c3c8c]/20" : ""
-              }`}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={() => {
-                if (!dragging) return;
-                const lead = leads.find((item) => item.id === dragging);
-                setDragging(null);
-                if (!lead || lead.status === column.id) return;
-                setMove({
-                  leadId: lead.id,
-                  leadName: lead.name,
-                  fromStatus: lead.status,
-                  toStatus: column.id,
-                  followUpDate: lead.followUpDate,
-                  nextAction: lead.nextAction,
-                });
-              }}
-            >
-              <div className="flex items-center justify-between gap-2 px-2 py-1.5">
-                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-stone">{column.label}</p>
-                <span className="rounded-full bg-plaster px-2 py-0.5 text-[11px] font-bold text-ink">{columnLeads.length}</span>
-              </div>
-              <div className="grid min-h-[4.5rem] gap-2">
-                {columnLeads.map((lead) => (
-                  <div
-                    key={lead.id}
-                    draggable
-                    onDragStart={() => setDragging(lead.id)}
-                    onDragEnd={() => setDragging(null)}
-                    className="cursor-grab rounded-xl border border-line bg-card p-3 text-sm active:cursor-grabbing"
-                  >
-                    <Link href={`/admin/leads/${lead.id}`} className="font-semibold text-ink hover:underline" onClick={(event) => event.stopPropagation()}>
-                      {lead.name}
-                    </Link>
-                    <p className="mt-0.5 truncate text-stone">{lead.productName || "No product yet"}</p>
-                    <p className="truncate text-xs text-stone">{lead.location}</p>
-                    <p className="mt-1 text-xs font-semibold text-ink">
-                      {lead.quoteValue != null ? money(lead.quoteValue) : "—"} · {lead.source}
-                    </p>
-                    {lead.stageReason ? (
-                      <p className="mt-1 text-[11px] text-stone">{stageReasonLabel(lead.stageReason)}</p>
-                    ) : null}
-                    {lead.nextAction ? (
-                      <p className="mt-1 line-clamp-2 text-[11px] font-semibold text-[#0c3c8c]">{lead.nextAction}</p>
-                    ) : null}
-                    {lead.followUpDate ? (
-                      <p className="mt-1 text-[11px] font-bold text-[#8a6a00]">Follow up {lead.followUpDate}</p>
-                    ) : null}
-                    <div className="mt-2 flex gap-2">
-                      <Link href={`/admin/leads/${lead.id}`} className="text-[11px] font-bold text-brick hover:underline">
-                        Open
-                      </Link>
-                      <button
-                        type="button"
-                        className="text-[11px] font-bold text-stone hover:text-ink"
-                        onClick={() =>
-                          setMove({
-                            leadId: lead.id,
-                            leadName: lead.name,
-                            fromStatus: lead.status,
-                            toStatus: lead.status,
-                            followUpDate: lead.followUpDate,
-                            nextAction: lead.nextAction,
-                          })
-                        }
-                      >
-                        Log update
-                      </button>
-                    </div>
+      <div className="-mx-4 overflow-x-auto px-4 pb-2 lg:-mx-0 lg:px-0">
+        <div className="flex min-w-[1100px] gap-3 xl:min-w-0 xl:grid xl:grid-cols-6">
+          {LEAD_STATUSES.map((column) => {
+            const columnLeads = leads.filter((lead) => lead.status === column.id);
+            const activeDrop = dragging && over === column.id;
+            return (
+              <section
+                key={column.id}
+                className={`flex w-[220px] shrink-0 flex-col rounded-2xl border bg-white transition xl:w-auto ${
+                  activeDrop ? "border-[#0c3c8c] shadow-[0_0_0_3px_rgba(12,60,140,0.12)]" : "border-line"
+                }`}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setOver(column.id);
+                }}
+                onDragLeave={() => setOver((value) => (value === column.id ? null : value))}
+                onDrop={() => {
+                  if (!dragging) return;
+                  const lead = leads.find((item) => item.id === dragging);
+                  setDragging(null);
+                  setOver(null);
+                  if (!lead || lead.status === column.id) return;
+                  setMove({
+                    leadId: lead.id,
+                    leadName: lead.name,
+                    fromStatus: lead.status,
+                    toStatus: column.id,
+                    followUpDate: lead.followUpDate,
+                    nextAction: lead.nextAction,
+                  });
+                }}
+              >
+                <header className="border-b border-line px-3 py-3">
+                  <div className={`mb-2 h-1 w-10 rounded-full ${COLUMN_BAR[column.id] || "bg-line"}`} />
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-sm font-extrabold text-ink">{column.label.replace(" lead", "")}</h2>
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${COLUMN_TONE[column.id] || "bg-plaster text-ink"}`}>
+                      {columnLeads.length}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+                </header>
+
+                <div className="flex min-h-[12rem] flex-1 flex-col gap-2 p-2.5">
+                  {columnLeads.map((lead) => (
+                    <article
+                      key={lead.id}
+                      draggable
+                      onDragStart={() => setDragging(lead.id)}
+                      onDragEnd={() => {
+                        setDragging(null);
+                        setOver(null);
+                      }}
+                      className={`rounded-xl border border-line bg-plaster/60 p-3 transition hover:border-[#0c3c8c]/35 hover:bg-white ${
+                        dragging === lead.id ? "opacity-50" : ""
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <Link
+                          href={`/admin/leads/${lead.id}`}
+                          className="min-w-0 font-extrabold leading-snug text-ink hover:underline"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          {lead.name}
+                        </Link>
+                        <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#0c3c8c]/35" aria-hidden title="Drag to move" />
+                      </div>
+
+                      <p className="mt-1 truncate text-xs text-stone">
+                        {lead.productName || "No product yet"}
+                      </p>
+                      <p className="truncate text-[11px] text-stone">{lead.location}</p>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+                        <span className="font-bold text-ink">{lead.quoteValue != null ? money(lead.quoteValue) : "—"}</span>
+                        <span className="text-stone">·</span>
+                        <span className="capitalize text-stone">{lead.source}</span>
+                      </div>
+
+                      {lead.followUpDate || lead.nextAction || lead.stageReason ? (
+                        <div className="mt-2 space-y-1 border-t border-line/80 pt-2">
+                          {lead.followUpDate ? (
+                            <p className="text-[11px] font-bold text-[#8a6a00]">Due {lead.followUpDate}</p>
+                          ) : null}
+                          {lead.nextAction ? (
+                            <p className="line-clamp-2 text-[11px] font-semibold text-ink">{lead.nextAction}</p>
+                          ) : null}
+                          {lead.stageReason && !lead.nextAction ? (
+                            <p className="truncate text-[11px] text-stone">{stageReasonLabel(lead.stageReason)}</p>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      <div className="mt-2.5 flex gap-2">
+                        <Link
+                          href={`/admin/leads/${lead.id}`}
+                          className="rounded-full border border-line bg-white px-2.5 py-1 text-[11px] font-bold text-ink hover:bg-plaster"
+                        >
+                          Open
+                        </Link>
+                        <button
+                          type="button"
+                          className="rounded-full px-2.5 py-1 text-[11px] font-bold text-stone hover:bg-white hover:text-ink"
+                          onClick={() =>
+                            setMove({
+                              leadId: lead.id,
+                              leadName: lead.name,
+                              fromStatus: lead.status,
+                              toStatus: lead.status,
+                              followUpDate: lead.followUpDate,
+                              nextAction: lead.nextAction,
+                            })
+                          }
+                        >
+                          Log
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+
+                  {!columnLeads.length ? (
+                    <p className="px-1 py-6 text-center text-xs text-stone">Drop a lead here</p>
+                  ) : null}
+                </div>
+              </section>
+            );
+          })}
+        </div>
       </div>
 
       <LeadStageDialog move={move} onClose={() => setMove(null)} onDone={onDone} />
