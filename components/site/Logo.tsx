@@ -16,19 +16,19 @@ export function Logo({
         light ? "rounded-xl bg-white px-2.5 py-1.5 shadow-[0_6px_18px_rgba(0,0,0,0.18)]" : ""
       } ${className}`}
     >
-      {/* Official CBH mark — transparent PNG for light surfaces; white plate on dark chrome. */}
+      {/* Official CBH roof lockup — white plate on dark chrome. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={CBH_LOGO}
-        alt="Consolidated Building and Hardware"
-        className="h-10 w-auto max-w-[220px] object-contain object-left sm:h-11 lg:h-12"
+        alt="Consolidated Bricks & Hardware"
+        className="h-9 w-auto max-w-[240px] object-contain object-left sm:h-10 lg:h-11"
       />
     </span>
   );
 
   if (href === null) return mark;
   return (
-    <Link href={href} className="inline-flex items-center" aria-label="Consolidated Building and Hardware home">
+    <Link href={href} className="inline-flex items-center" aria-label="Consolidated Bricks & Hardware home">
       {mark}
     </Link>
   );

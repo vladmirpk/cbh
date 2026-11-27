@@ -1,8 +1,8 @@
 /** Local catalogue / marketing photos served from /public/cbh_images. */
 export const asset = (file: string) => `/cbh_images/${file}`;
 
-/** Official CBH mark (black knocked out for light surfaces). */
-export const CBH_LOGO = asset("cbh_logo.png");
+/** Official CBH mark (roof lockup — Consolidated Bricks & Hardware). */
+export const CBH_LOGO = asset("cbh_logo.jpeg");
 
 export const CBH_HERO = {
   bricks: asset("banner_bricks.png"),

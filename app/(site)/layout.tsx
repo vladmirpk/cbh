@@ -14,7 +14,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     prisma.siteSetting.findUnique({ where: { id: "default" } }),
     getSession(),
   ]);
-  const phone = site?.phone || "+263 242 123 456";
+  const phone = site?.phone || "+263 78 515 3169";
   const email = site?.email || "sales@cbh.co.zw";
   const address = site?.address || "Stand 123, Gweru Road, Harare";
   const whatsappHref = waLink(site?.whatsapp || phone, "Hello CBH, I need materials.");

@@ -10,6 +10,8 @@
 
 CBH has a **live digital sales, marketing, quotation, lead, credit-flag, and order-request platform** (Phase 1–2 plus core Phase 3 desk/portal/credit). **Live card / EcoCash gateway checkout** still needs merchant keys; Paynow ID and bank details are configurable meanwhile.
 
+**Sales WhatsApp / phone (live):** `+263 78 515 3169` — wired into site settings, header, dock, product/quote WhatsApp links.
+
 ---
 
 ## Phase 1 — Digital foundation
@@ -27,7 +29,7 @@ CBH has a **live digital sales, marketing, quotation, lead, credit-flag, and ord
 | WhatsApp Business API | Partial | Adapter live when `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_ID` set |
 | Quote request / provisional quote | Delivered | Multi-product + delivery estimate + email/WA notify |
 | Admin dashboard | Delivered | Roles + follow-ups + rep KPIs + sources |
-| Basic lead management | Delivered | Pipeline + claim + notes |
+| Basic lead management | Delivered | Pipeline + claim + notes; stage moves require confirmation note, reason tag, optional follow-up |
 | SEO basics | Partial | Titles, sitemap, product JSON-LD |
 | Analytics | Partial | Desk metrics; GA when `NEXT_PUBLIC_GA_ID` set |
 | Mobile optimisation | Delivered | Mobile dock, quote, forms, WhatsApp |
@@ -87,6 +89,18 @@ CBH has a **live digital sales, marketing, quotation, lead, credit-flag, and ord
 | Solar configurator MVP | Delivered — `/solar-configurator` → quote/cart |
 | Stock qty enforcement on quote/order | Delivered |
 | Campaign performance signals | Partial — linked lead heuristic on desk |
+
+---
+
+## Brand & desk UX (post-brief polish)
+
+| Item | Status | Note |
+| --- | --- | --- |
+| Official logo on site + quote/order PDFs | Delivered | Roof lockup `public/cbh_images/cbh_logo.jpeg` |
+| Public sales contact | Delivered | `+263 78 515 3169` |
+| Hero banners + product photography | Delivered | Local `/cbh_images/*` catalogue |
+| Admin preview / edit / delete confirmations | Delivered | Customers, quotes, orders, catalogue, marketing, team, settings, audit |
+| CRM stage confirmation + timeline | Delivered | `LeadEvent` history on every move |
 
 ---
 

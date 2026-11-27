@@ -47,7 +47,7 @@ async function main() {
   const passwordHash = await bcrypt.hash("Cbh-Yard-2026", 10);
   const [admin, sales] = await Promise.all([
     prisma.user.create({ data: { name: "CBH Administrator", email: "admin@cbh.co.zw", passwordHash, role: "super_admin", phone: "+263 77 000 0000" } }),
-    prisma.user.create({ data: { name: "Sales Desk", email: "sales@cbh.co.zw", passwordHash, role: "salesperson", phone: "+263 77 000 0001" } }),
+    prisma.user.create({ data: { name: "Sales Desk", email: "sales@cbh.co.zw", passwordHash, role: "salesperson", phone: "+263 78 515 3169" } }),
   ]);
   await prisma.user.createMany({
     data: [
@@ -162,8 +162,8 @@ async function main() {
     update: {},
     create: {
       id: "default",
-      phone: "+263 242 123 456",
-      whatsapp: "+263 77 000 0000",
+      phone: "+263 78 515 3169",
+      whatsapp: "+263 78 515 3169",
       email: "sales@cbh.co.zw",
       address: "Stand 123, Gweru Road, Harare",
       hours: "Mon–Fri 07:30–16:30 · Sat 07:30–13:00",
